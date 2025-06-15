@@ -1,0 +1,12 @@
+.page-container {
+  margin: 0 auto;
+  /* padding: 1rem; */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.subtitle {
+  color: #666;
+  margin-bottom: 2rem;
+}

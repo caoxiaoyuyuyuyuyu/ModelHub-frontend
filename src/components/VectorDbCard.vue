@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Delete, Edit, Connection } from '@element-plus/icons-vue';
+import { Connection } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 
 interface VectorDbCardProps {
@@ -26,19 +26,27 @@ defineProps<VectorDbCardProps>();
         </el-icon>
         <h3>{{ name }}</h3>
       </div>
-      <div class="actions">
-        <el-button type="primary" :icon="Edit" circle size="small" />
-        <el-button type="danger" :icon="Delete" circle size="small" />
-      </div>
     </div>
     
     <div class="card-content">
       <p class="description">{{ describe }}</p>
-      <div class="metadata">
-        <div class="meta-item">
+      <!-- <div class="metadata"> -->
+        <!-- <div class="meta-item">
           <span class="meta-label">ID:</span>
           <span class="meta-value">{{ id }}</span>
+        </div> -->
+        <!-- <div class="meta-item">
+          <span class="meta-label">创建时间:</span>
+          <span class="meta-value">{{ created_at }}</span>
         </div>
+        <div class="meta-item">
+          <span class="meta-label">更新时间:</span>
+          <span class="meta-value">{{ updated_at }}</span>
+        </div> -->
+      <!-- </div> -->
+    </div>
+    
+    <div class="card-footer">
         <div class="meta-item">
           <span class="meta-label">创建时间:</span>
           <span class="meta-value">{{ created_at }}</span>
@@ -47,10 +55,6 @@ defineProps<VectorDbCardProps>();
           <span class="meta-label">更新时间:</span>
           <span class="meta-value">{{ updated_at }}</span>
         </div>
-      </div>
-    </div>
-    
-    <div class="card-footer">
       <el-button type="primary" plain>查看详情</el-button>
       <el-button type="success" plain>连接测试</el-button>
       <el-button plain @click="navigateToDetail(id)" >管理数据</el-button>
@@ -101,12 +105,6 @@ defineProps<VectorDbCardProps>();
   padding: 8px;
   font-size: 1.5rem;
 }
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .card-content {
   margin-bottom: 1.5rem;
 }
@@ -119,8 +117,8 @@ defineProps<VectorDbCardProps>();
 }
 
 .metadata {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  justify-content: flex-end;
   gap: 1rem;
   background-color: #f8f9fa;
   padding: 1rem;
@@ -129,19 +127,21 @@ defineProps<VectorDbCardProps>();
 
 .meta-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  gap: 0.5rem;
+  align-items: flex-end;
 }
 
 .meta-label {
   font-size: 0.85rem;
   color: #909399;
-  margin-bottom: 0.25rem;
+  /* margin-bottom: 0.25rem; */
 }
 
 .meta-value {
-  font-size: 0.95rem;
-  color: #303133;
-  font-weight: 500;
+  font-size: 0.85rem;
+  color: #909399;
+  /* margin-bottom: 0.25rem; */
 }
 
 .card-footer {

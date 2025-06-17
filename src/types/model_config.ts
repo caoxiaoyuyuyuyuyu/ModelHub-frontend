@@ -12,7 +12,7 @@ export class ModelConfigResponse {
   name!: string;
   author!: string;
   base_model_name!: string;
-  description?: string | null;
+  describe?: string | null;
   updated_at!: string;
 }
 
@@ -21,20 +21,20 @@ export class ModelConfigBase{
   title!: string;
   author!: string;
   isFeatured!: boolean;
-  description!: string | null;
+  describe!: string | null;
   avatar!: string | null;
   date!: string;
 }
 export class ModelConfig {
   id!: number;
   name!: string;
-  description!: string | null;
+  describe!: string | null;
   share_id!: string;
   base_model_id!: number;
-  temprature!: number;
+  temperature!: number;
   top_p!: number;
   prompt!: string | null;
-  vector_db_id?: number | null;
+  vector_db_id!: number | null;
   created_at!: string;
   updated_at!: string;
   is_private!: boolean;
@@ -44,10 +44,11 @@ export class ModelConfig {
 export interface ModelConfigForm {
   id?: number | null;
   name: string;
+  describe: string | null;
   base_model_id: number | null;
-  temprature: number;
+  temperature: number;
   top_p: number;
-  prompt: string;
+  prompt: string | null;
   vector_db_id: number | null;
   is_private: boolean;
 }

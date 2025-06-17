@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { Connection, Delete, Edit, Back } from '@element-plus/icons-vue';
+import { Connection, Delete, Edit, Back, Upload } from '@element-plus/icons-vue';
 import type { VectorDbForm } from '../types/vectorDb';
+import { getVectorDb, uploadDocument, deleteDocument } from '../api/vectorDb';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { deleteModelConfig } from '../api/model';
+
 const route = useRoute();
 const loading = ref(true);
+const uploadLoading = ref(false);
 const vectorDbId = ref<number>(parseInt(route.params.id as string));
 
 // 数据库基本信息
@@ -12,78 +17,37 @@ const vectorDb = ref<VectorDbForm>({
   id: 0,
   name: '',
   describe: '',
+  embedding_id: 0,
+  document_similarity: 0,
   created_at: '',
   updated_at: '',
   model_configs: [],
   documents: []
 });
 
+// 上传文件相关
+const uploadDialogVisible = ref(false);
+const uploadFormRef = ref();
+const uploadForm = ref({
+  file: null as File | null,
+  describe: ''
+});
+
+// 上传规则验证
+const uploadRules = {
+  file: [
+    { required: true, message: '请选择要上传的文件', trigger: 'change' }
+  ],
+  describe: [
+    { required: true, message: '请输入文件描述', trigger: 'blur' }
+  ]
+};
+
 // 获取数据库详情
 const fetchVectorDbDetail = async () => {
   loading.value = true;
   try {
-    // 模拟API请求 - 实际项目中替换为真实API调用
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // 模拟数据 - 实际项目中删除这部分
-    vectorDb.value = {
-      id: vectorDbId.value,
-      name: '客户知识库',
-      describe: '包含所有客户信息和交互历史的向量数据库，支持快速检索客户相关数据',
-      created_at: '2023-07-01',
-      updated_at: '2023-09-15',
-      model_configs: [
-        {
-          id: 1,
-          name: '客户服务模型',
-          description: '用于处理客户咨询的专用模型',
-          share_id: 'cfg_12345',
-          base_model_id: 101,
-          temprature: 0.7,
-          top_p: 0.9,
-          prompt: '你是一个专业的客户服务助手，请用友好的方式回答客户问题。',
-          vector_db_id: vectorDbId.value,
-          created_at: '2023-07-10',
-          updated_at: '2023-08-20',
-          is_private: false
-        },
-        {
-          id: 2,
-          name: '销售分析模型',
-          description: '分析客户购买行为的模型',
-          share_id: 'cfg_67890',
-          base_model_id: 102,
-          temprature: 0.5,
-          top_p: 0.8,
-          prompt: '分析客户购买历史并提供销售建议。',
-          vector_db_id: vectorDbId.value,
-          created_at: '2023-07-15',
-          updated_at: '2023-09-01',
-          is_private: true
-        }
-      ],
-      documents: [
-        {
-          id: 1,
-          orignal_name: '客户手册.pdf',
-          type: 'pdf',
-          size: 2456789,
-          save_path: '/documents/customer_manual.pdf',
-          describe: '客户服务标准操作手册',
-          upload_at: '2023-07-05'
-        },
-        {
-          id: 2,
-          orignal_name: '产品介绍.docx',
-          type: 'docx',
-          size: 1234567,
-          save_path: '/documents/product_intro.docx',
-          describe: '最新产品功能介绍文档',
-          upload_at: '2023-07-12'
-        }
-      ]
-    };
-    
+    vectorDb.value = await getVectorDb(vectorDbId.value);
     loading.value = false;
   } catch (error) {
     console.error('获取数据库详情失败:', error);
@@ -91,10 +55,107 @@ const fetchVectorDbDetail = async () => {
   }
 };
 
+const handleDeleteModelConfig = async (modelConfigId: number) => { 
+  try {
+    await deleteModelConfig(modelConfigId);
+    ElMessage.success('模型配置删除成功');
+    fetchVectorDbDetail();
+  } catch (error) {
+    console.error('删除模型配置失败:', error);
+    ElMessage.error('删除模型配置失败');
+  }
+};
+
+// 处理文件选择
+const handleFileChange = (uploadFile : any) => {
+  // 确保获取的是原生File对象
+  uploadForm.value.file = uploadFile.raw || uploadFile;
+  return false; // 阻止自动上传
+};
+
+// 提交上传表单
+const submitUpload = async () => {
+  try {
+    await uploadFormRef.value.validate();
+    
+    if (!uploadForm.value.file) {
+      ElMessage.error('请选择要上传的文件');
+      return;
+    }
+    
+    uploadLoading.value = true;
+    
+    const formData = new FormData();
+    formData.append('file', uploadForm.value.file);
+    formData.append('describe', uploadForm.value.describe);
+    formData.append('vector_db_id', vectorDbId.value.toString());
+    
+    // 调试输出 - 确认文件类型
+    console.log('文件对象类型:', uploadForm.value.file.constructor.name);
+    console.log('文件详情:', {
+      name: uploadForm.value.file.name,
+      size: uploadForm.value.file.size,
+      type: uploadForm.value.file.type
+    });
+    
+    
+    const newDocument = await uploadDocument(formData);
+    
+    // 更新本地文档列表
+    vectorDb.value.documents.push(newDocument);
+    
+    ElMessage.success('文档上传成功');
+    uploadDialogVisible.value = false;
+    resetUploadForm();
+  } catch (error) {
+    console.error('上传文档失败:', error);
+    ElMessage.error('上传文档失败');
+  } finally {
+    uploadLoading.value = false;
+  }
+};
+
+// 重置上传表单
+const resetUploadForm = () => {
+  uploadForm.value = {
+    file: null,
+    describe: ''
+  };
+  if (uploadFormRef.value) {
+    uploadFormRef.value.resetFields();
+  }
+};
+
 // 删除文档
-const handleDeleteDocument = (docId: number) => {
-  console.log('删除文档:', docId);
-  // 实际项目中调用API删除文档
+const handleDeleteDocument = async (docId: number) => {
+  try {
+    await ElMessageBox.confirm('确定要删除此文档吗？删除后无法恢复', '警告', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    
+    await deleteDocument(docId);
+    
+    // 更新本地文档列表
+    vectorDb.value.documents = vectorDb.value.documents.filter(
+      doc => doc.id !== docId
+    );
+    
+    ElMessage.success('文档删除成功');
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除文档失败:', error);
+      ElMessage.error('删除文档失败');
+    }
+  }
+};
+
+// 下载文档
+const handleDownloadDocument = (id: number) => {
+  // 这里假设后端返回了可以直接下载的URL
+  const downloadUrl = `/api/documents/download/${id}`;
+  window.open(downloadUrl, '_blank');
 };
 
 onMounted(() => {
@@ -110,7 +171,7 @@ onMounted(() => {
         <router-link to="/database" class="back-link">
           <el-button :icon="Back" type="text">返回列表</el-button>
         </router-link>
-        <h2 class="page-title">向量数据库详情</h2>
+        <h2>向量数据库详情</h2>
       </div>
       
       <!-- 基本信息卡片 -->
@@ -121,11 +182,11 @@ onMounted(() => {
               <Connection />
             </el-icon>
             <h3>{{ vectorDb.name }}</h3>
-            <el-tag type="success" effect="plain" size="small">运行中</el-tag>
+            <el-tag type="success" effect="plain" size="large">运行中</el-tag>
           </div>
           <div class="actions">
-            <el-button type="primary" :icon="Edit" size="small">编辑</el-button>
-            <el-button type="danger" :icon="Delete" size="small">删除</el-button>
+            <el-button type="primary" :icon="Edit" size="large">编辑</el-button>
+            <el-button type="danger" :icon="Delete" size="large">删除</el-button>
           </div>
         </div>
         
@@ -163,22 +224,26 @@ onMounted(() => {
         <el-tab-pane label="关联模型配置">
           <div class="tab-content">
             <div class="action-bar">
-              <el-button type="primary" size="small">添加模型配置</el-button>
+              <el-button type="primary" size="large">添加模型配置</el-button>
             </div>
             
             <el-table :data="vectorDb.model_configs" style="width: 100%" border>
               <el-table-column prop="name" label="配置名称" width="180" />
-              <el-table-column prop="description" label="描述" />
-              <el-table-column prop="temprature" label="Temperature" width="120" />
-              <el-table-column prop="top_p" label="Top P" width="120" />
+              <el-table-column prop="describe" label="描述" />
               <el-table-column prop="is_private" label="私有" width="100">
                 <template #default="{ row }">
-                  <el-tag :type="row.is_private ? 'danger' : 'success'" size="small">
+                  <el-tag :type="row.is_private ? 'danger' : 'success'" size="large">
                     {{ row.is_private ? '是' : '否' }}
                   </el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="updated_at" label="更新时间" width="180" />
+              <el-table-column label="操作" width="180">
+                <template #default="{ row }">
+                  <el-button type="primary" size="large">查看</el-button>
+                  <el-button type="danger" size="large" @click="handleDeleteModelConfig(row.id)">删除</el-button>
+                </template>
+              </el-table-column>
             </el-table>
           </div>
         </el-tab-pane>
@@ -187,8 +252,73 @@ onMounted(() => {
         <el-tab-pane label="存储文档">
           <div class="tab-content">
             <div class="action-bar">
-              <el-button type="primary" size="small">上传文档</el-button>
+              <el-button 
+                type="primary" 
+                size="large"
+                :icon="Upload"
+                @click="uploadDialogVisible = true"
+              >
+                上传文档
+              </el-button>
             </div>
+
+              <!-- 上传文档对话框 -->
+              <el-dialog
+                v-model="uploadDialogVisible"
+                title="上传文档"
+                @closed="resetUploadForm"
+              >
+                <el-form
+                  ref="uploadFormRef"
+                  :model="uploadForm"
+                  :rules="uploadRules"
+                  label-width="80px"
+                >
+                  <el-form-item label="文件" prop="file">
+                    <el-upload
+                      class="upload-demo"
+                      drag
+                      :auto-upload="false"
+                      :show-file-list="false"
+                      :on-change="handleFileChange"
+                    >
+                      <el-icon class="el-icon--upload"><upload /></el-icon>
+                      <div class="el-upload__text">
+                        拖拽文件到此处或<em>点击选择文件</em>
+                      </div>
+                      <template #tip>
+                        <div class="el-upload__tip">
+                          支持PDF、Word、TXT等文档格式，大小不超过50MB
+                        </div>
+                      </template>
+                    </el-upload>
+                    <div v-if="uploadForm.file" class="file-info">
+                      <el-icon><document /></el-icon>
+                      {{ uploadForm.file.name }} ({{ (uploadForm.file.size / 1024 / 1024).toFixed(2) }} MB)
+                    </div>
+                  </el-form-item>
+                  
+                  <el-form-item label="描述" prop="describe">
+                    <el-input
+                      v-model="uploadForm.describe"
+                      type="textarea"
+                      :rows="3"
+                      placeholder="请输入文档描述"
+                    />
+                  </el-form-item>
+                </el-form>
+                
+                <template #footer>
+                  <el-button @click="uploadDialogVisible = false">取消</el-button>
+                  <el-button
+                    type="primary"
+                    :loading="uploadLoading"
+                    @click="submitUpload"
+                  >
+                    上传
+                  </el-button>
+                </template>
+              </el-dialog>
             
             <el-table :data="vectorDb.documents" style="width: 100%" border>
               <el-table-column prop="orignal_name" label="文档名称" width="220" />
@@ -206,10 +336,10 @@ onMounted(() => {
               <el-table-column prop="upload_at" label="上传时间" width="180" />
               <el-table-column label="操作" width="150" fixed="right">
                 <template #default="{ row }">
-                  <el-button type="primary" size="small">下载</el-button>
+                  <el-button type="primary" size="large" @click="handleDownloadDocument(row.id)">下载</el-button>
                   <el-button 
                     type="danger" 
-                    size="small" 
+                    size="large" 
                     @click="handleDeleteDocument(row.id)"
                   >
                     删除
@@ -267,12 +397,6 @@ const results = await client.query({
 
 .back-link {
   text-decoration: none;
-}
-
-.page-title {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #303133;
 }
 
 .info-card {
@@ -422,6 +546,20 @@ const results = await client.query({
 :deep(.el-pagination__total),
 :deep(.el-pagination__jump) {
   font-size: 1rem;
+}
+
+.upload-demo {
+  width: 100%;
+}
+
+.file-info {
+  margin-top: 10px;
+  padding: 8px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 </style>

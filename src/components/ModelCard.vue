@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ElAvatar } from 'element-plus';
+import { ElAvatar, ElTag } from 'element-plus';
 import { useRouter } from 'vue-router';
 
 
 interface ModelCardProps { 
   id: number;
-  title: string;
+  name: string;
   author: string;
   isFeatured: boolean;
-  description: string;
-  avatar: string;
-  date: string;
+  describe: string;
+  base_model_name: string;
+  update_at: string;
 }
 const props = defineProps<ModelCardProps>();
 const router = useRouter();
@@ -18,7 +18,7 @@ const handleExperience = () => {
   router.push({
     path: '/chat',
     query: {
-      config_name: props.title,
+      config_name: props.name,
       model_config_id: props.id
     }
   });
@@ -30,20 +30,21 @@ const handleExperience = () => {
     <div class="card-header">
       <div class="model-info">
         <ElAvatar :size="32" :src="'/public/vite.svg'"></ElAvatar>
-        <h3>{{ title }}</h3>
+        <h3>{{ name }}</h3>
       </div>
-      <ElTag size="large">{{ isFeatured ? '推荐' : '最新' }}</ElTag>
+      <!-- <ElTag size="large">{{ isFeatured ? '推荐' : '最新' }}</ElTag> -->
+      <ElTag size="large">{{ base_model_name }}</ElTag>
     </div>
     <div class="description-area">
-      <p class="description">{{ description }}</p>
+      <p class="description">{{ describe }}</p>
     </div>
     <div class="card-footer">
       <div class="author-date">
         <div class="author-info">
-          <ElAvatar :size="24" :src="avatar" />
-          <span>{{ author }}</span>
+          <!-- <ElAvatar :size="24" :src="avatar" /> -->
+          <ElTag>{{ author }}</ElTag>
         </div>
-        <span class="date">{{ date }}</span>
+        <span class="date">{{ update_at }}</span>
       </div>
       <div class="actions">
         <ElButton size="large" type="text">查看详情</ElButton>
@@ -64,6 +65,7 @@ const handleExperience = () => {
   display: flex;
   flex-direction: column;
   /* background-color: #fff; */
+  justify-content: space-between;
   padding-bottom: 0.5rem;
   background: radial-gradient(26% 84% at 4% 4%, rgba(216, 219, 231, 0.3) 0%, rgba(232, 236, 242, 0) 94%), #fff;
 }

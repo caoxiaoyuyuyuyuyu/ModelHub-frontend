@@ -14,6 +14,8 @@ export interface VectorDbForm {
   id: number
   name: string
   describe: string
+  embedding_id: number
+  document_similarity: number
   created_at: string
   updated_at: string
   model_configs: ModelConfig[]

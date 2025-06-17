@@ -1,67 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import ModelCard from '@/components/ModelCard.vue';
 import ModelPagination from '@/components/ModelPagination.vue';
 import { Search } from '@element-plus/icons-vue';
+import { getConfigurators } from '../api/user';
+import { getModelConfigs, getUserModelConfig } from '../api/model';
+import { ModelConfigBase } from '../types/model_config';
+
+interface Configurator {
+  id: number;
+  name: string;
+}
 
 // 模拟数据
-const models = ref([
-  {
-    id: 1,
-    title: '图像分类模型',
-    description: '基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务',
-    author: 'AI实验室',
-    avatar: '/public/image.png',
-    date: '2023-04-05',
-    is_featured: true
-  },
-  {
-    id: 2,
-    title: '图像分类模型',
-    description: '基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务',
-    author: 'AI实验室',
-    avatar: '/public/image.png',
-    date: '2023-04-05',
-    is_featured: true
-  },
-  {
-    id: 3,
-    title: '图像分类模型',
-    description: '基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务',
-    author: 'AI实验室',
-    avatar: '/public/image.png',
-    date: '2023-04-05',
-    is_featured: true
-  },
-  {
-    id: 4,
-    title: '图像分类模型',
-    description: '基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务',
-    author: 'AI实验室',
-    avatar: '/public/image.png',
-    date: '2023-04-05',
-    is_featured: true
-  },
-  {
-    id: 5,
-    title: '图像分类模型',
-    description: '基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务',
-    author: 'AI实验室',
-    avatar: '/public/image.png',
-    date: '2023-04-05',
-    is_featured: true
-  },
-  {
-    id: 6,
-    title: '图像分类模型',
-    description: '基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务基于ResNet50的图像分类模型，适用于多种场景识别任务',
-    author: 'AI实验室',
-    avatar: '/public/image.png',
-    date: '2023-04-05',
-    is_featured: true
-  },
-]);
-
+const models = ref<ModelConfigBase[]>([]);
 
 const currentPage = ref(1);
 const pageSize = ref(16);
@@ -76,10 +28,19 @@ const suppliers = ref([
 ]);
 
 // 配置商选项
-const configurators = ref([
-  '全部', '阿里云', '腾讯云', '华为云', 'AWS', 'Azure', 
-  'Google Cloud', '百度云', '其他'
-]);
+const configurators = ref<Configurator[]>([]);
+
+// 页面渲染前请求配置商列表
+onMounted(async () => {
+  configurators.value.push({ id: 0, name: '全部' });
+  const res = await getConfigurators();
+  configurators.value.push(...res);
+  configurators.value.push({ id: -1, name: '其他' });
+  models.value = await getModelConfigs();
+
+  // 初始化 selectedConfigurator
+  selectedConfigurator.value = configurators.value[0];
+});
 
 // 热度选项
 const popularityOptions = ref([
@@ -88,12 +49,34 @@ const popularityOptions = ref([
 
 // 当前选择的筛选条件
 const selectedSupplier = ref('全部');
-const selectedConfigurator = ref('全部');
+const selectedConfigurator = ref<Configurator>();
 const selectedPopularity = ref('全部');
 
 const handlePageChange = (newPage: number) => {
   currentPage.value = newPage;
   // 实际应用中这里应该调用API获取新页面的数据
+};
+
+const handleConfiguratorChange = async (newValue: Configurator) => {
+  // 刷新数据
+  console.log(newValue);
+  console.log(selectedConfigurator.value);
+  if (newValue?.id === 0) {
+    models.value = await getModelConfigs();
+  }else if (newValue?.id === -1){
+      const allModels = await getModelConfigs();
+      const knownConfiguratorIds = configurators.value
+        .filter(config => config.id > 0)
+        .map(config => config.name);
+      console.log(knownConfiguratorIds);
+      console.log(allModels);
+      models.value = allModels.filter((model : ModelConfigBase) => 
+        !knownConfiguratorIds.includes(model.author)
+      );
+  }
+   else {
+    models.value = await getUserModelConfig(newValue.id);
+  }
 };
 </script>
 
@@ -101,7 +84,7 @@ const handlePageChange = (newPage: number) => {
   <div class="page-container">
     <div class="content-section">
       <h2>模型广场</h2>
-      <p class="subtitle">探索和发现高质量的机器学习模型</p>
+      <p class="subtitle">探索和发现高质量的大语言模型配置</p>
       
       <!-- 搜索框 -->
       <div class="search-container">
@@ -135,11 +118,12 @@ const handlePageChange = (newPage: number) => {
         
         <div class="filter-group">
           <span class="filter-label">配置商</span>
-          <ElRadioGroup v-model="selectedConfigurator" class="filter-options">
+          <ElRadioGroup v-model="selectedConfigurator" class="filter-options" @change="handleConfiguratorChange">
             <ElRadioButton 
               v-for="config in configurators" 
-              :key="config" 
-              :label="config" 
+              :key="config.id" 
+              :label="config.name" 
+              :value="config"
               size="large"
               class="filter-button"
             />

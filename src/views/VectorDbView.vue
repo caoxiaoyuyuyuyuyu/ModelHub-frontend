@@ -4,45 +4,31 @@ import { Search, Plus, Refresh } from '@element-plus/icons-vue';
 import VectorDbCard from '@/components/VectorDbCard.vue';
 import ModelPagination from '@/components/ModelPagination.vue';
 import type { VectorDbBase } from '../types/vectorDb';
+import { createVectorDb, fetchOwnVectors } from '../api/vectorDb';
+import type { ModelInfo } from '../types/model_config';
+import { getModelInfos } from '../api/model';
 
+const baseModels = ref<ModelInfo[]>([]);
 // 模拟数据
-const vectorDBs = ref<VectorDbBase[]>([
-  {
-    id: 1,
-    name: '客户知识库',
-    describe: '包含所有客户信息和交互历史的向量数据库，支持快速检索客户相关数据',
-    created_at: '2023-07-01',
-    updated_at: '2023-09-15'
-  },
-  {
-    id: 2,
-    name: '技术文档库',
-    describe: '存储公司所有技术文档和API参考，使用先进的向量索引技术实现毫秒级搜索',
-    created_at: '2023-05-12',
-    updated_at: '2023-10-20'
-  },
-  {
-    id: 3,
-    name: '产品数据库',
-    describe: '包含所有产品信息和规格的向量数据库，支持多模态检索和相似产品推荐',
-    created_at: '2023-08-03',
-    updated_at: '2023-11-05'
-  },
-  {
-    id: 4,
-    name: '法律文档库',
-    describe: '存储公司所有法律合同和合规文档的专用向量数据库，支持语义搜索和条款提取',
-    created_at: '2023-06-18',
-    updated_at: '2023-10-28'
-  }
-]);
+const vectorDBs = ref<VectorDbBase[]>([]);
 
+const dialogVisible = ref(false);
 const loading = ref(false);
 const searchQuery = ref('');
 const currentPage = ref(1);
 const pageSize = ref(10);
 const totalPages = ref(40);
 
+const form = ref({
+  id: null,
+  name: '',
+  describe: '',
+  embedding_id: null,
+  document_similarity: 0.5,
+});
+const formRules = {
+  name: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
+};
 // 状态选项
 const statusOptions = ref([
   '全部', '运行中', '已停止', '异常'
@@ -60,20 +46,45 @@ const handlePageChange = (newPage: number) => {
 const loadData = async () => {
   loading.value = true;
   try {
-    // 模拟API请求
-    await new Promise(resolve => setTimeout(resolve, 800));
+    vectorDBs.value = await fetchOwnVectors();
     loading.value = false;
   } catch (error) {
     loading.value = false;
     console.error('加载数据失败:', error);
   }
 };
-
-const handleCreate = () => {
-  console.log('创建新的向量数据库');
+// 初始化表单
+const initForm = () => {
+  form.value = {
+    id: null,
+    name: '',
+    describe: '',
+    embedding_id: null,
+    document_similarity: 0.5,
+  };
 };
-
-onMounted(() => {
+// 提交表单
+const submitForm = async () => {
+  loading.value = true;
+  try {
+    console.log('提交表单', form.value);
+    // 创建配置
+    await createVectorDb(form.value);
+    dialogVisible.value = false;
+    loadData();
+  } catch (error) {
+    console.error('保存失败:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+// 打开创建对话框
+const handleCreate = () => {
+  initForm();
+  dialogVisible.value = true;
+};
+onMounted(async () => {
+  baseModels.value = await getModelInfos();
   loadData();
 });
 </script>
@@ -144,6 +155,64 @@ onMounted(() => {
         @page-change="handlePageChange"
       />
     </div>
+    <!-- 数据库表单对话框 -->
+    <ElDialog
+      v-model="dialogVisible"
+      :title="'新建数据库'"
+      width="50%"
+      style="font-size: larger;"
+    >
+      <ElForm
+        :model="form"
+        :rules="formRules"
+        label-width="120px"
+        ref="formRef"
+        class="dialog-form"
+      >
+        <ElFormItem label="数据库名称" prop="name">
+          <ElInput v-model="form.name" placeholder="请输入数据库名称" />
+        </ElFormItem>
+        
+        <ElFormItem label="描述" prop="describe"> 
+          <ElInput v-model="form.describe" placeholder="请输入描述" />
+        </ElFormItem>
+        <ElFormItem label="嵌入模型" prop="embedding_id">
+          <ElSelect
+            v-model="form.embedding_id"
+            placeholder="请选择嵌入模型"
+            style="width: 100%"
+          >
+            <ElOption
+              v-for="model in baseModels"
+              :key="model.id"
+              :label="model.model_name"
+              :value="model.id"
+            >
+              <div class="model-option">
+                <span>{{ model.model_name }}</span>
+                <!-- <span class="model-describe">{{ model.describe }}</span> -->
+              </div>
+            </ElOption>
+          </ElSelect>
+        </ElFormItem>
+        <ElFormItem label="相似度">
+          <ElSlider
+            v-model="form.document_similarity"
+            :min="0"
+            :max="1"
+            :step="0.1"
+            show-input
+          />
+        </ElFormItem>
+      </ElForm>
+      
+      <template #footer>
+        <ElButton @click="dialogVisible = false">取消</ElButton>
+        <ElButton type="primary" @click="submitForm" :loading="loading">
+          保存
+        </ElButton>
+      </template>
+    </ElDialog>
   </div>
 </template>
 

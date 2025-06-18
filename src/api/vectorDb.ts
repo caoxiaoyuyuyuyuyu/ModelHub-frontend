@@ -13,6 +13,11 @@ export const getVectorDb = async (id: number) => {
     return response.data.data
 }
 
+export const updateVectorDb = async (id: number, data: any) => { 
+    return await api.post(`/vector/update/${id}`, data);
+}
+
+
 export const uploadDocument = async (formData: FormData) => {
     const response = await api.post('/vector/upload', formData, {
         headers: {
@@ -26,4 +31,14 @@ export const uploadDocument = async (formData: FormData) => {
 
 export const deleteDocument = async (id: number) => { 
     return await api.delete(`/vector/delete/${id}`)
+}
+
+export const deleteVectorDb = async (id: number) => { 
+    const response = await api.delete(`/vector/delete/${id}`)
+    return response.data.data
+}
+
+export const testConnect = async (id: number) => { 
+    const response = await api.get(`/vector/connect/${id}`)
+    return response.status === 200
 }

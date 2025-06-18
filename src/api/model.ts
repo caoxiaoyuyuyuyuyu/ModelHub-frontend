@@ -6,6 +6,11 @@ export const getModelInfos = async () => {
     return response.data.data.filter((item:ModelInfo) => item.type === 'chatllm')
 }
 
+export const getEmbeddingModelInfos = async () => { 
+    const response = await api.get('/model//modelinfo/getlist')
+    return response.data.data.filter((item:ModelInfo) => item.type === 'embedding')
+}
+
 export const getModelInfo = async (id: number) => { 
     return await api.get(`/model/modelinfo/get/${id}`)
 }

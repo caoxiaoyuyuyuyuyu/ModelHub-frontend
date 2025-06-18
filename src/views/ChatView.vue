@@ -4,34 +4,26 @@ import { ref, onMounted, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElDrawer, ElButton, ElInput, ElIcon } from 'element-plus';
 import { Fold, Expand, Promotion } from '@element-plus/icons-vue';
+import type { Conversation, ChatMessage } from '../types/chat';
+import { getConversations, getMessages } from '../api/chat';
+import { getCurrentTime } from '../utils/common';
 
 const route = useRoute();
 
 // 获取路由参数
 const configName = ref(route.query.config_name as string || '');
 const modelConfigId = ref(route.query.model_config_id as string || '');
+const conversationId = ref(route.query.conversation_id as string || '');
 
 // 控制抽屉显示/隐藏
 const drawerVisible = ref(false);
 const drawerWidth = ref(400);
 
 // 对话历史列表（模拟数据）
-const chatHistory = ref([
-  { id: 1, title: '关于图像分类的问题', lastMessage: '这个模型可以识别哪些类别？', timestamp: '2023-04-10 14:30' },
-  { id: 2, title: '模型性能讨论', lastMessage: '准确率能达到多少？', timestamp: '2023-04-09 10:15' },
-  { id: 3, title: '部署问题', lastMessage: '如何部署到生产环境？', timestamp: '2023-04-08 16:45' },
-]);
+const chatHistory = ref<Conversation[]>([]);
 
 // 当前对话的消息列表
-const messages = ref([
-  { 
-    id: 1, 
-    content: '你好！我是AI助手，有什么可以帮您？', 
-    isUser: false, 
-    timestamp: new Date(),
-    avatar: '/public/vite.svg'
-  },
-]);
+const messages = ref<ChatMessage[]>([]);
 
 // 用户输入的消息
 const userInput = ref('');
@@ -43,11 +35,9 @@ const sendMessage = () => {
   
   // 添加用户消息
   messages.value.push({
-    id: messages.value.length + 1,
     content: userInput.value,
-    isUser: true,
-    timestamp: new Date(),
-    avatar: '/public/image.png'
+    role: 'user',
+    create_at: getCurrentTime(),
   });
   
   // 滚动到底部
@@ -56,11 +46,9 @@ const sendMessage = () => {
   // 模拟AI回复
   setTimeout(() => {
     messages.value.push({
-      id: messages.value.length + 1,
-      content: '这是AI的回复。模型配置ID：' + modelConfigId.value + '，配置名称：' + configName.value,
-      isUser: false,
-      timestamp: new Date(),
-      avatar: '/public/vite.svg'
+      content: 'Hello, how can I help you?',
+      role: 'assistant',
+      create_at: getCurrentTime(),
     });
     scrollToBottom();
   }, 500);
@@ -75,10 +63,21 @@ const toggleDrawer = () => {
 };
 
 // 页面加载时，根据modelConfigId加载模型配置
-onMounted(() => {
+onMounted(async() => {
   console.log('模型配置ID:', modelConfigId.value);
   console.log('配置名称:', configName.value);
   scrollToBottom();
+  chatHistory.value = await getConversations();
+  console.log('conversationId', conversationId.value);
+  if (conversationId.value) {
+    messages.value = await getMessages(Number(conversationId.value));
+  }else{
+    messages.value = [{
+      role: 'system',
+      content: '请开始你的对话',
+      create_at: getCurrentTime(),
+    }];
+  }
 });
 
 // 滚动消息区域到底部
@@ -110,9 +109,9 @@ const scrollToBottom = () => {
           class="history-item"
           :class="{ active: item.id === 1 }"
         >
-          <div class="history-title">{{ item.title }}</div>
-          <div class="history-preview">{{ item.lastMessage }}</div>
-          <div class="history-time">{{ item.timestamp }}</div>
+          <div class="history-title">{{ item.name }}</div>
+          <div class="history-preview">{{ item.last_message }}</div>
+          <div class="history-time">{{ item.create_at }}</div>
         </div>
       </div>
       <div class="new-chat-btn">
@@ -126,23 +125,23 @@ const scrollToBottom = () => {
       <div class="chat-header">
         <ElButton @click="toggleDrawer" :icon="drawerVisible ? Fold : Expand" circle class="toggle-btn" />
         <h2>{{ configName }}</h2>
-        <div class="model-info">模型配置ID: {{ modelConfigId }}</div>
+        <div class="model-info">模型配置: {{ configName }}</div>
       </div>
 
       <!-- 消息区域 -->
       <div ref="messageAreaRef" class="message-area">
         <div 
           v-for="message in messages" 
-          :key="message.id" 
+          :key="message.create_at" 
           class="message" 
-          :class="{ 'user-message': message.isUser, 'ai-message': !message.isUser }"
+          :class="{ 'user-message': message.role=='user', 'ai-message': message.role=='assistant' }"
         >
           <div class="message-avatar">
-            <img :src="message.avatar" :alt="message.isUser ? '用户头像' : 'AI头像'">
+            <img :src="'/public/vite.svg'" :alt="'头像'">
           </div>
           <div class="message-content">
             <div class="message-text">{{ message.content }}</div>
-            <div class="message-time">{{ message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</div>
+            <div class="message-time">{{ message.create_at }}</div>
           </div>
         </div>
       </div>

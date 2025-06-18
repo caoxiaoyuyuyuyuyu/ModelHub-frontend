@@ -1,4 +1,79 @@
 <!-- src/views/HistoryView.vue -->
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import type { Conversation } from '../types/chat';
+import { onMounted } from 'vue';
+import { getModelInfos } from '../api/model';
+import type { ModelInfo } from '../types/model_config';
+import { getConversations } from '../api/chat';
+
+const router = useRouter();
+
+// 筛选条件
+const searchQuery = ref('');
+const selectedDateRange = ref('all');
+const selectedModel = ref(null);
+const detailVisible = ref(false);
+const detailData = ref<Conversation>({
+  id: 0,
+  name: '',
+  messages: [],
+  model_config_id: 0,
+  chat_history: '',
+  create_at: '',
+  update_at: '',
+});
+
+// 模型列表
+const models = ref<ModelInfo[]>([]);
+
+// 历史对话数据 - 使用 HistoryItem 类型
+const histories = ref<Conversation[]>([]);
+
+// 过滤后的历史记录
+const filteredHistories = computed(() => {
+  return histories.value.filter(history => {
+    // 搜索过滤
+    const matchesSearch = searchQuery.value === '' || 
+      history.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    
+    // 模型过滤
+    const matchesModel = selectedModel.value === null || 
+      history.model_config_id === models.value.find(m => m.id === selectedModel.value)?.id;
+    
+    // 日期过滤（简化处理）
+    const matchesDate = selectedDateRange.value === 'all' || true;
+    
+    return matchesSearch && matchesModel && matchesDate;
+  });
+});
+
+// 显示详情弹窗
+const showDetail = (history: Conversation) => {
+  detailData.value = history;
+  detailVisible.value = true;
+};
+
+// 继续对话
+const continueChat = (history: Conversation) => {
+  router.push({
+    path: '/chat',
+    query: {
+      history_id: history.id,
+      config_name: models.value.find(m => m.id === history.model_config_id)?.model_name,
+      model_config_id: history.model_config_id
+    }
+  });
+};
+
+onMounted(async() => { 
+  models.value = await getModelInfos();
+  histories.value = await getConversations();
+});
+
+</script>
+
 <template>
   <div class="page-container"> 
     <div class="history-container">
@@ -34,7 +109,7 @@
             <el-option 
                 v-for="model in models" 
                 :key="model.id" 
-                :label="model.name" 
+                :label="model.model_name" 
                 :value="model.id"
             ></el-option>
             </el-select>
@@ -48,12 +123,12 @@
             :key="index" 
             class="history-card"
         >
-            <h4>{{ history.title }}</h4>
+            <h4>{{ history.name }}</h4>
             
             <div class="card-footer">
             <div class="message-count">
                 <i class="el-icon-chat-dot-round"></i>
-                {{ history.total }} 条消息
+                {{ history.messages.length===10?'10+' : history.messages.length }} 条消息
             </div>
             <div class="card-actions">
                 <el-button 
@@ -84,19 +159,19 @@
         custom-class="history-detail-dialog"
         >
         <div class="detail-header">
-            <div class="detail-title">{{ detailData.title }}</div>
+            <div class="detail-title">{{ detailData.name }}</div>
             <div class="detail-meta">
             <div class="meta-item">
                 <i class="el-icon-time"></i>
-                <span>{{ detailData.date }}</span>
+                <span>{{ detailData.create_at }}</span>
             </div>
             <div class="meta-item">
                 <i class="el-icon-cpu"></i>
-                <span>{{ detailData.modelName }}</span>
+                <span>{{ models.find((item)=>{return item.id===detailData.model_config_id})?.model_name }}</span>
             </div>
             <div class="meta-item">
                 <i class="el-icon-chat-dot-round"></i>
-                <span>{{ detailData.total }} 条消息</span>
+                <span>{{ detailData.messages.length===10?'10+':detailData.messages.length }} 条消息</span>
             </div>
             </div>
         </div>
@@ -108,105 +183,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
-
-const router = useRouter();
-
-// 定义历史记录类型
-interface HistoryItem {
-  id: string;
-  title: string;
-  date: string;
-  modelName: string;
-  total: number;
-}
-
-// 筛选条件
-const searchQuery = ref('');
-const selectedDateRange = ref('all');
-const selectedModel = ref('');
-const detailVisible = ref(false);
-const detailData = ref<HistoryItem>({
-  id: '',
-  title: '',
-  date: '',
-  modelName: '',
-  total: 0
-});
-
-// 模型列表
-const models = ref([
-  { id: 'resnet50', name: 'ResNet50图像分类模型' },
-  { id: 'gpt4', name: 'GPT-4语言模型' },
-  { id: 'yolo', name: 'YOLOv5目标检测' },
-  { id: 'bert', name: 'BERT文本分类' }
-]);
-
-// 历史对话数据 - 使用 HistoryItem 类型
-const histories = ref<HistoryItem[]>([
-  {
-    id: 'hist1',
-    title: '图像分类模型应用讨论',
-    date: '2023-06-15 14:30',
-    modelName: 'ResNet50图像分类模型',
-    total: 10,
-  },
-  {
-    id: 'hist2',
-    title: '图像分类模型应用讨论',
-    date: '2023-06-15 14:30',
-    modelName: 'ResNet50图像分类模型',
-    total: 10,
-  },
-  {
-    id: 'hist3',
-    title: '图像分类模型应用讨论',
-    date: '2023-06-15 14:30',
-    modelName: 'ResNet50图像分类模型',
-    total: 10,
-  },
-  // 其他历史记录...
-]);
-
-// 过滤后的历史记录
-const filteredHistories = computed(() => {
-  return histories.value.filter(history => {
-    // 搜索过滤
-    const matchesSearch = searchQuery.value === '' || 
-      history.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      history.modelName.toLowerCase().includes(searchQuery.value.toLowerCase());
-    
-    // 模型过滤
-    const matchesModel = selectedModel.value === '' || 
-      history.modelName === models.value.find(m => m.id === selectedModel.value)?.name;
-    
-    // 日期过滤（简化处理）
-    const matchesDate = selectedDateRange.value === 'all' || true;
-    
-    return matchesSearch && matchesModel && matchesDate;
-  });
-});
-
-// 显示详情弹窗
-const showDetail = (history: HistoryItem) => {
-  detailData.value = history;
-  detailVisible.value = true;
-};
-
-// 继续对话
-const continueChat = (history: HistoryItem) => {
-  router.push({
-    path: '/chat',
-    query: {
-      config_name: history.modelName,
-      history_id: history.id
-    }
-  });
-};
-</script>
 
 <style scoped>
 .history-header {

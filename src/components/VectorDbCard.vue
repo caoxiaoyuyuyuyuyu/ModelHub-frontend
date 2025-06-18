@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Connection } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
+import { testConnect } from '../api/vectorDb';
+import { ElMessage } from 'element-plus';
+
 
 interface VectorDbCardProps {
   created_at: string;
@@ -12,6 +15,16 @@ interface VectorDbCardProps {
 const router = useRouter();
 const navigateToDetail = (id: number) => {
   router.push(`/database/${id}`);
+};
+
+const HandletestConnect = async (id: number) => { 
+  const res = await testConnect(id)
+  if (res) {
+    ElMessage.success('连接成功');
+  } else {
+    ElMessage.error('连接失败');
+  }
+
 };
 
 defineProps<VectorDbCardProps>();
@@ -55,9 +68,9 @@ defineProps<VectorDbCardProps>();
           <span class="meta-label">更新时间:</span>
           <span class="meta-value">{{ updated_at }}</span>
         </div>
-      <el-button type="primary" plain>查看详情</el-button>
-      <el-button type="success" plain>连接测试</el-button>
-      <el-button plain @click="navigateToDetail(id)" >管理数据</el-button>
+      <el-button type="primary" plain @click="navigateToDetail(id)">查看详情</el-button>
+      <el-button type="success" plain @click="HandletestConnect(id)">连接测试</el-button>
+      <el-button plain @click="navigateToDetail(id)">管理数据</el-button>
     </div>
   </div>
 </template>

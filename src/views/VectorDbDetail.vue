@@ -3,14 +3,19 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { Connection, Delete, Edit, Back, Upload } from '@element-plus/icons-vue';
 import type { VectorDbForm } from '../types/vectorDb';
-import { getVectorDb, uploadDocument, deleteDocument } from '../api/vectorDb';
+import { getVectorDb, updateVectorDb, uploadDocument, deleteDocument, deleteVectorDb } from '../api/vectorDb';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { deleteModelConfig } from '../api/model';
+import { useRouter } from 'vue-router';
+import type { ModelInfo } from '../types/model_config';
+import { getEmbeddingModelInfos } from '../api/model';
 
+const baseModels = ref<ModelInfo[]>([]);
 const route = useRoute();
 const loading = ref(true);
 const uploadLoading = ref(false);
 const vectorDbId = ref<number>(parseInt(route.params.id as string));
+const router = useRouter();
 
 // 数据库基本信息
 const vectorDb = ref<VectorDbForm>({
@@ -29,14 +34,25 @@ const vectorDb = ref<VectorDbForm>({
 const uploadDialogVisible = ref(false);
 const uploadFormRef = ref();
 const uploadForm = ref({
-  file: null as File | null,
+  files: [] as File[],
   describe: ''
 });
 
-// 上传规则验证
+// 上传规则验证 - 修改文件验证规则
 const uploadRules = {
-  file: [
-    { required: true, message: '请选择要上传的文件', trigger: 'change' }
+  files: [ // 字段名改为 files
+    { 
+      required: true, 
+      validator: (rule: any, value: any, callback: any) => {
+        console.log('uploadFiles', rule, value);
+        if (uploadForm.value.files.length === 0) {
+          callback(new Error('请至少选择一个文件'));
+        } else {
+          callback();
+        }
+      },
+      trigger: 'change' 
+    }
   ],
   describe: [
     { required: true, message: '请输入文件描述', trigger: 'blur' }
@@ -66,45 +82,49 @@ const handleDeleteModelConfig = async (modelConfigId: number) => {
   }
 };
 
-// 处理文件选择
-const handleFileChange = (uploadFile : any) => {
-  // 确保获取的是原生File对象
-  uploadForm.value.file = uploadFile.raw || uploadFile;
+// 处理文件选择 - 修改为支持多个文件
+const handleFileChange = (uploadFile : any, uploadFiles: any[]) => {
+  console.log('handleFileChange', uploadFile, uploadFiles);
+  // 将文件列表转换为原生File对象数组
+  uploadForm.value.files = uploadFiles.map(file => file.raw || file);
   return false; // 阻止自动上传
 };
+
 
 // 提交上传表单
 const submitUpload = async () => {
   try {
     await uploadFormRef.value.validate();
     
-    if (!uploadForm.value.file) {
+    if (uploadForm.value.files.length === 0) {
       ElMessage.error('请选择要上传的文件');
       return;
     }
-    
     uploadLoading.value = true;
     
     const formData = new FormData();
-    formData.append('file', uploadForm.value.file);
+
+    // 正确添加多个文件（确保使用 'files' 作为字段名）
+    uploadForm.value.files.forEach(file => {
+      formData.append('files', file); // 注意字段名是 'files'（复数）
+    });
+    
     formData.append('describe', uploadForm.value.describe);
     formData.append('vector_db_id', vectorDbId.value.toString());
     
-    // 调试输出 - 确认文件类型
-    console.log('文件对象类型:', uploadForm.value.file.constructor.name);
-    console.log('文件详情:', {
-      name: uploadForm.value.file.name,
-      size: uploadForm.value.file.size,
-      type: uploadForm.value.file.type
-    });
+    // 调试输出 FormData 内容
+    console.log('FormData 内容:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
     
     
-    const newDocument = await uploadDocument(formData);
+    await uploadDocument(formData);
     
-    // 更新本地文档列表
-    vectorDb.value.documents.push(newDocument);
+    fetchVectorDbDetail();
     
-    ElMessage.success('文档上传成功');
+    ElMessage.success(`成功上传 ${uploadForm.value.files.length} 个文档`);
+    // ElMessage.success('文档上传成功');
     uploadDialogVisible.value = false;
     resetUploadForm();
   } catch (error) {
@@ -118,7 +138,7 @@ const submitUpload = async () => {
 // 重置上传表单
 const resetUploadForm = () => {
   uploadForm.value = {
-    file: null,
+    files: [],
     describe: ''
   };
   if (uploadFormRef.value) {
@@ -158,13 +178,127 @@ const handleDownloadDocument = (id: number) => {
   window.open(downloadUrl, '_blank');
 };
 
-onMounted(() => {
+const handleAddModelConfig = () => { 
+  router.push(`/config`);
+};
+const dialogVisible = ref(false);
+const form = ref({
+  id: vectorDbId.value,
+  name: '',
+  describe: '',
+  embedding_id: vectorDb.value.embedding_id,
+  document_similarity: 0.5,
+});
+const formRules = {
+  name: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
+};
+const initForm = () => {
+  form.value = {
+    id: vectorDb.value.id,
+    name: vectorDb.value.name,
+    describe: vectorDb.value.describe,
+    embedding_id: vectorDb.value.embedding_id,
+    document_similarity: Number(vectorDb.value.document_similarity),
+  };
+}
+// 提交表单
+const submitForm = async () => { 
+  loading.value = true;
+  try {
+    await updateVectorDb(vectorDbId.value, form.value); 
+  } catch (error) {
+    console.error('保存失败:', error);
+  }
+  loading.value = false;
   fetchVectorDbDetail();
+  dialogVisible.value = false;
+};
+const handleEditForm = () => { 
+  initForm();
+  dialogVisible.value = true;
+};
+const handleDeleteVectorDb = async () => {
+  try {
+    await ElMessageBox.confirm('确定要删除此数据库吗？删除后无法恢复', '警告', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    
+    await deleteVectorDb(vectorDbId.value);
+    
+    ElMessage.success('数据库删除成功');
+    router.push('/database');
+  } catch (error) {
+}
+};
+onMounted(async() => {
+  fetchVectorDbDetail();
+  baseModels.value = await getEmbeddingModelInfos();
+  console.log('baseModels', baseModels.value);
 });
 </script>
 
 <template>
   <div class="page-container" v-loading="loading">
+    <!-- 数据库表单对话框 -->
+    <ElDialog
+      v-model="dialogVisible"
+      :title="'更新数据库'"
+      width="50%"
+      style="font-size: larger;"
+    >
+      <ElForm
+        :model="form"
+        :rules="formRules"
+        label-width="120px"
+        ref="formRef"
+        class="dialog-form"
+      >
+        <ElFormItem label="数据库名称" prop="name">
+          <ElInput v-model="form.name" placeholder="请输入数据库名称" />
+        </ElFormItem>
+        
+        <ElFormItem label="描述" prop="describe"> 
+          <ElInput v-model="form.describe" placeholder="请输入描述" />
+        </ElFormItem>
+        <ElFormItem label="嵌入模型" prop="embedding_id" aria-disabled="true">
+          <ElSelect disabled
+            v-model="form.embedding_id"
+            placeholder="请选择嵌入模型"
+            style="width: 100%"
+          >
+            <ElOption
+              v-for="model in baseModels"
+              :key="model.id"
+              :label="model.model_name"
+              :value="model.id"
+            >
+              <div class="model-option">
+                <span>{{ model.model_name }}</span>
+                <!-- <span class="model-describe">{{ model.describe }}</span> -->
+              </div>
+            </ElOption>
+          </ElSelect>
+        </ElFormItem>
+        <ElFormItem label="相似度">
+          <ElSlider
+            v-model="form.document_similarity"
+            :min="0"
+            :max="1"
+            :step="0.1"
+            show-input
+          />
+        </ElFormItem>
+      </ElForm>
+      
+      <template #footer>
+        <ElButton @click="dialogVisible = false">取消</ElButton>
+        <ElButton type="primary" @click="submitForm" :loading="loading">
+          保存
+        </ElButton>
+      </template>
+    </ElDialog>
     <div class="content-section">
       <!-- 返回按钮和标题 -->
       <div class="header-section">
@@ -185,8 +319,8 @@ onMounted(() => {
             <el-tag type="success" effect="plain" size="large">运行中</el-tag>
           </div>
           <div class="actions">
-            <el-button type="primary" :icon="Edit" size="large">编辑</el-button>
-            <el-button type="danger" :icon="Delete" size="large">删除</el-button>
+            <el-button type="primary" :icon="Edit" size="large" @click="handleEditForm" >编辑</el-button>
+            <el-button type="danger" :icon="Delete" size="large" @click="handleDeleteVectorDb">删除</el-button>
           </div>
         </div>
         
@@ -194,17 +328,17 @@ onMounted(() => {
           <p class="description">{{ vectorDb.describe }}</p>
           
           <div class="metadata-grid">
-            <div class="meta-item">
+            <div class="meta-item"> 
+              <span class="meta-label">嵌入模型</span>
+              <span class="meta-value">{{ baseModels.find((item)=> {console.log(item.id,vectorDb.embedding_id);return item.id==vectorDb.embedding_id})?.model_name }}</span>
+            </div>
+            <!-- <div class="meta-item">
               <span class="meta-label">数据库ID</span>
               <span class="meta-value">{{ vectorDb.id }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">创建时间</span>
-              <span class="meta-value">{{ vectorDb.created_at }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">更新时间</span>
-              <span class="meta-value">{{ vectorDb.updated_at }}</span>
+            </div> -->
+            <div class="meta-item"> 
+              <span class="meta-label">相似度</span>
+              <span class="meta-value">{{ form.document_similarity }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">关联模型</span>
@@ -213,6 +347,14 @@ onMounted(() => {
             <div class="meta-item">
               <span class="meta-label">存储文档</span>
               <span class="meta-value">{{ vectorDb.documents.length }}个</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">创建时间</span>
+              <span class="meta-value">{{ vectorDb.created_at }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">更新时间</span>
+              <span class="meta-value">{{ vectorDb.updated_at }}</span>
             </div>
           </div>
         </div>
@@ -224,7 +366,7 @@ onMounted(() => {
         <el-tab-pane label="关联模型配置">
           <div class="tab-content">
             <div class="action-bar">
-              <el-button type="primary" size="large">添加模型配置</el-button>
+              <el-button type="primary" size="large" @click="handleAddModelConfig">前往添加模型配置</el-button>
             </div>
             
             <el-table :data="vectorDb.model_configs" style="width: 100%" border>
@@ -274,13 +416,15 @@ onMounted(() => {
                   :rules="uploadRules"
                   label-width="80px"
                 >
-                  <el-form-item label="文件" prop="file">
+                  <el-form-item label="文件" prop="files">
                     <el-upload
                       class="upload-demo"
                       drag
+                      multiple 
                       :auto-upload="false"
                       :show-file-list="false"
                       :on-change="handleFileChange"
+                      :file-list="uploadForm.files.map(file => ({ name: file.name }))"
                     >
                       <el-icon class="el-icon--upload"><upload /></el-icon>
                       <div class="el-upload__text">
@@ -292,9 +436,11 @@ onMounted(() => {
                         </div>
                       </template>
                     </el-upload>
-                    <div v-if="uploadForm.file" class="file-info">
-                      <el-icon><document /></el-icon>
-                      {{ uploadForm.file.name }} ({{ (uploadForm.file.size / 1024 / 1024).toFixed(2) }} MB)
+                    <div v-if="uploadForm.files.length > 0" class="files-list">
+                      <div v-for="(file, index) in uploadForm.files" :key="index" class="file-item">
+                        <el-icon><document /></el-icon>
+                        {{ file.name }} ({{ (file.size / 1024 / 1024).toFixed(2) }} MB)
+                      </div>
                     </div>
                   </el-form-item>
                   
@@ -321,7 +467,7 @@ onMounted(() => {
               </el-dialog>
             
             <el-table :data="vectorDb.documents" style="width: 100%" border>
-              <el-table-column prop="orignal_name" label="文档名称" width="220" />
+              <el-table-column prop="original_name" label="文档名称" width="220" />
               <el-table-column prop="type" label="类型" width="100">
                 <template #default="{ row }">
                   <el-tag effect="plain">{{ row.type.toUpperCase() }}</el-tag>
@@ -329,12 +475,12 @@ onMounted(() => {
               </el-table-column>
               <el-table-column prop="size" label="大小" width="120">
                 <template #default="{ row }">
-                  {{ (row.size / 1024 / 1024).toFixed(2) }} MB
+                  {{ (row.size / 1024 ).toFixed(2) }} KB
                 </template>
               </el-table-column>
               <el-table-column prop="describe" label="描述" />
               <el-table-column prop="upload_at" label="上传时间" width="180" />
-              <el-table-column label="操作" width="150" fixed="right">
+              <el-table-column label="操作" width="250" fixed="right">
                 <template #default="{ row }">
                   <el-button type="primary" size="large" @click="handleDownloadDocument(row.id)">下载</el-button>
                   <el-button 
@@ -444,6 +590,7 @@ const results = await client.query({
   font-size: 0.95rem;
   line-height: 1.6;
   margin-bottom: 1.5rem;
+  text-align: left;
 }
 
 .metadata-grid {
@@ -481,6 +628,7 @@ const results = await client.query({
 }
 
 .action-bar {
+  display: flex;
   margin-bottom: 1rem;
 }
 

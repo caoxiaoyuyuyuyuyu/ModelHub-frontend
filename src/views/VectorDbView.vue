@@ -6,7 +6,7 @@ import ModelPagination from '@/components/ModelPagination.vue';
 import type { VectorDbBase } from '../types/vectorDb';
 import { createVectorDb, fetchOwnVectors } from '../api/vectorDb';
 import type { ModelInfo } from '../types/model_config';
-import { getModelInfos } from '../api/model';
+import { getEmbeddingModelInfos } from '../api/model';
 
 const baseModels = ref<ModelInfo[]>([]);
 // 模拟数据
@@ -84,7 +84,7 @@ const handleCreate = () => {
   dialogVisible.value = true;
 };
 onMounted(async () => {
-  baseModels.value = await getModelInfos();
+  baseModels.value = await getEmbeddingModelInfos();
   loadData();
 });
 </script>

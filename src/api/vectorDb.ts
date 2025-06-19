@@ -42,3 +42,11 @@ export const testConnect = async (id: number) => {
     const response = await api.get(`/vector/connect/${id}`)
     return response.status === 200
 }
+
+export const queryVector = async (id: number, query_text: string, n_results: number) => { 
+    const response = await api.post(`/vector/query/${id}`, {
+        query_text: query_text,
+        n_results: n_results
+    })
+    return response.data.data
+}

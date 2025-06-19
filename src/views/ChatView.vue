@@ -5,8 +5,9 @@ import { useRoute } from 'vue-router';
 import { ElDrawer, ElButton, ElInput, ElIcon } from 'element-plus';
 import { Fold, Expand, Promotion } from '@element-plus/icons-vue';
 import type { Conversation, ChatMessage } from '../types/chat';
-import { getConversations, getMessages } from '../api/chat';
+import { getConversations, getMessages, chat } from '../api/chat';
 import { getCurrentTime } from '../utils/common';
+import { getModelConfig } from '../api/model';
 
 const route = useRoute();
 
@@ -30,7 +31,7 @@ const userInput = ref('');
 const messageAreaRef = ref<HTMLElement | null>(null);
 
 // 发送消息
-const sendMessage = () => {
+const sendMessage = async () => {
   if (userInput.value.trim() === '') return;
   
   // 添加用户消息
@@ -43,18 +44,28 @@ const sendMessage = () => {
   // 滚动到底部
   scrollToBottom();
   
-  // 模拟AI回复
-  setTimeout(() => {
-    messages.value.push({
-      content: 'Hello, how can I help you?',
-      role: 'assistant',
-      create_at: getCurrentTime(),
-    });
-    scrollToBottom();
-  }, 500);
-  
+  // 创建请求参数
+  const formData = new FormData();
+  formData.append('conversation_id', conversationId.value);
+  formData.append('message', userInput.value);
+  formData.append('model_config_id', modelConfigId.value);
+
   // 清空输入框
+  const userInputBack = userInput.value;
+
   userInput.value = '';
+
+  const response = await chat(formData);
+  if (!response) {
+    userInput.value = userInputBack;
+    return;
+  };
+  console.log('响应数据:', response);
+  
+  // 模拟AI回复
+  messages.value.push(response);
+  scrollToBottom();
+  
 };
 
 // 切换抽屉显示
@@ -62,15 +73,58 @@ const toggleDrawer = () => {
   drawerVisible.value = !drawerVisible.value;
 };
 
-// 页面加载时，根据modelConfigId加载模型配置
-onMounted(async() => {
-  console.log('模型配置ID:', modelConfigId.value);
-  console.log('配置名称:', configName.value);
+const hanleChangeConversation = async (id: number, model_config_id: number) => { 
+  // 更新当前对话ID和模型配置ID
+  conversationId.value = id.toString();
+  modelConfigId.value = model_config_id.toString();
+  try {
+    // 重置模型配置名称，确保重新加载
+    configName.value = "";
+    
+    // 创建请求参数
+    const formData = new FormData();
+    formData.append('conversation_id', id.toString());
+    
+    // 获取新对话的消息
+    const ori_messages = await getMessages(formData);
+    
+    // 按时间排序消息
+    messages.value = ori_messages.messages.sort(
+      (a: ChatMessage, b: ChatMessage) => 
+        new Date(a.create_at).getTime() - new Date(b.create_at).getTime()
+    );
+    
+    // 加载模型配置名称（如果尚未加载）
+    if (!configName.value) {
+      configName.value = await getModelConfig(model_config_id);
+    }
+    
+    // 滚动到底部
+    nextTick(() => {
+      scrollToBottom();
+    });
+    
+  } catch (error) {
+    console.error('切换对话失败:', error);
+    // 失败时显示错误信息
+    messages.value = [{
+      role: 'system',
+      content: '对话加载失败，请重试',
+      create_at: getCurrentTime(),
+    }];
+  }
+};
+const loadDate = async () => { 
+  if (!configName.value){
+    configName.value = await getModelConfig(Number(modelConfigId.value));
+  }
   scrollToBottom();
   chatHistory.value = await getConversations();
-  console.log('conversationId', conversationId.value);
   if (conversationId.value) {
-    messages.value = await getMessages(Number(conversationId.value));
+    const formDate = new FormData();
+    formDate.append('conversation_id', conversationId.value);
+    const ori_messages = await getMessages(formDate);
+    messages.value = ori_messages.messages.sort((a: ChatMessage, b: ChatMessage) => new Date(a.create_at).getTime() - new Date(b.create_at).getTime());
   }else{
     messages.value = [{
       role: 'system',
@@ -78,6 +132,11 @@ onMounted(async() => {
       create_at: getCurrentTime(),
     }];
   }
+};
+
+// 页面加载时，根据modelConfigId加载模型配置
+onMounted(async() => {
+  loadDate();
 });
 
 // 滚动消息区域到底部
@@ -107,7 +166,8 @@ const scrollToBottom = () => {
           v-for="item in chatHistory" 
           :key="item.id" 
           class="history-item"
-          :class="{ active: item.id === 1 }"
+          :class="{ active: item.id == Number(conversationId) }"
+          @click="hanleChangeConversation(item.id,item.model_config_id)"
         >
           <div class="history-title">{{ item.name }}</div>
           <div class="history-preview">{{ item.last_message }}</div>
@@ -312,6 +372,7 @@ const scrollToBottom = () => {
   color: white;
   border-bottom-right-radius: 4px;
   box-shadow: 0 3px 10px rgba(58, 110, 255, 0.2);
+  text-align: left;
 }
 
 .user-message .message-text::after {
@@ -320,11 +381,21 @@ const scrollToBottom = () => {
   transform: rotate(45deg);
 }
 
+.ai-message .message-avatar {
+  margin-left: 0;
+  margin-right: 15px;
+}
+
+.ai-message .message-content {
+  align-items: flex-start;
+}
+
 .ai-message .message-text {
   background: white;
   color: #1d1d1f;
   border-bottom-left-radius: 4px;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  text-align: left;
 }
 
 .ai-message .message-text::after {

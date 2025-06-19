@@ -9,6 +9,8 @@ import { deleteModelConfig } from '../api/model';
 import { useRouter } from 'vue-router';
 import type { ModelInfo } from '../types/model_config';
 import { getEmbeddingModelInfos } from '../api/model';
+import { queryVector } from '../api/vectorDb';
+import { Search } from '@element-plus/icons-vue';
 
 const baseModels = ref<ModelInfo[]>([]);
 const route = useRoute();
@@ -16,6 +18,7 @@ const loading = ref(true);
 const uploadLoading = ref(false);
 const vectorDbId = ref<number>(parseInt(route.params.id as string));
 const router = useRouter();
+const queryInput = ref('');
 
 // 数据库基本信息
 const vectorDb = ref<VectorDbForm>({
@@ -231,6 +234,48 @@ const handleDeleteVectorDb = async () => {
     router.push('/database');
   } catch (error) {
 }
+};
+// 查询结果接口
+interface QueryResult {
+  document_name: string;
+  document_id: number;
+  score: number;
+  text: string;
+}
+
+// 在原有ref定义后面添加
+const queryResult = ref<QueryResult[]>([]);
+const queryLoading = ref(false);
+
+// 处理查询操作
+const handleQuery = async () => {
+  if (!queryInput.value.trim()) {
+    ElMessage.warning('请输入检索内容');
+    return;
+  }
+  
+  try {
+    queryLoading.value = true;
+    const top_k = 5; // 返回5条结果
+    const res = await queryVector(vectorDbId.value, queryInput.value, top_k);
+    queryResult.value = res;
+    ElMessage.success(`找到 ${res.length} 条相关结果`);
+  } catch (error) {
+    console.error('检索失败:', error);
+    ElMessage.error('检索失败');
+  } finally {
+    queryLoading.value = false;
+  }
+};
+// 高亮内容中的关键词
+const highlightContent = (content: string, keyword: string) => {
+  if (!keyword) return content;
+  const regex = new RegExp(escapeRegExp(keyword), 'gi');
+  return content.replace(regex, match => `<span class="highlight">${match}</span>`);
+};
+// 转义正则特殊字符
+const escapeRegExp = (str: string) => {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 onMounted(async() => {
   fetchVectorDbDetail();
@@ -497,7 +542,7 @@ onMounted(async() => {
         </el-tab-pane>
         
         <!-- 连接信息标签页 -->
-        <el-tab-pane label="连接信息">
+        <!-- <el-tab-pane label="连接信息">
           <div class="tab-content">
             <div class="connection-info">
               <h4>API 端点</h4>
@@ -525,6 +570,63 @@ const results = await client.query({
   vector: [0.1, 0.2, 0.3, ...],
   top_k: 5
 });</pre>
+            </div>
+          </div>
+        </el-tab-pane> -->
+
+        <!-- 检索标签页 -->
+        <el-tab-pane label="尝试检索">
+          <div class="tab-content">
+            <div class="connection-info">
+              <el-input 
+                v-model="queryInput"
+                placeholder="请输入检索内容"
+                @keyup.enter="handleQuery"
+                class="query-input"
+                clearable
+              >
+                <template #append>
+                  <el-button 
+                    :icon="Search" 
+                    :loading="queryLoading"
+                    @click="handleQuery"
+                  >
+                    检索
+                  </el-button>
+                </template>
+              </el-input>
+              
+              <!-- 检索结果区域 -->
+              <div v-if="queryResult.length > 0" class="query-results">
+                <h4>检索结果（Top {{ queryResult.length }}）</h4>
+                
+                <div v-for="(result, index) in queryResult" :key="index" class="result-item">
+                  <div class="result-header">
+                    <div>
+                      <span class="document-name">{{ result.document_name }}</span>
+                      <el-tag type="success" size="small">
+                        相似度: {{ (result.score * 100).toFixed(2) }}%
+                      </el-tag>
+                    </div>
+                    <el-button 
+                      type="primary" 
+                      size="small" 
+                      @click="handleDownloadDocument(result.document_id)"
+                    >
+                      查看文档
+                    </el-button>
+                  </div>
+                  
+                  <div 
+                    class="result-content" 
+                    v-html="highlightContent(result.text, queryInput)"
+                  ></div>
+                </div>
+              </div>
+              
+              <div v-else-if="queryInput" class="empty-results">
+                <el-empty description="未找到相关结果" />
+              </div>
             </div>
           </div>
         </el-tab-pane>
@@ -710,4 +812,71 @@ const results = await client.query({
   gap: 8px;
 }
 
+
+.query-input {
+  margin-bottom: 20px;
+}
+
+.query-results {
+  margin-top: 20px;
+}
+
+.result-item {
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+  background-color: #fafafa;
+  transition: all 0.3s;
+}
+
+.result-item:hover {
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #dcdfe6;
+}
+
+.document-name {
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+.result-content {
+  line-height: 1.6;
+  color: #606266;
+  max-height: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  text-align: left;
+}
+
+.empty-results {
+  margin-top: 40px;
+  text-align: center;
+}
+
+/* 高亮样式 */
+.highlight {
+  background-color: #ff0;
+  font-weight: bold;
+  padding: 0 2px;
+}
+/* 确保高亮样式在作用域内生效 */
+.result-content :deep(.highlight) {
+  background-color: #ff0;
+  font-weight: bold;
+  padding: 0 2px;
+  color: #000;
+}
 </style>

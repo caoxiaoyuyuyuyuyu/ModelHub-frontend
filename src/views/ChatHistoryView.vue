@@ -57,11 +57,13 @@ const showDetail = (history: Conversation) => {
 
 // 继续对话
 const continueChat = (history: Conversation) => {
+  var configName = models.value.find(m => m.id === history.model_config_id)?.model_name;
+  console.log('configName', configName);
   router.push({
     path: '/chat',
     query: {
-      history_id: history.id,
-      config_name: models.value.find(m => m.id === history.model_config_id)?.model_name,
+      conversation_id: history.id,
+      config_name: configName,
       model_config_id: history.model_config_id
     }
   });
@@ -70,8 +72,16 @@ const continueChat = (history: Conversation) => {
 onMounted(async() => { 
   models.value = await getModelInfos();
   histories.value = await getConversations();
+  
+  // 修复：遍历每个对话历史，对其消息数组排序
+  histories.value.forEach(history => {
+    history.messages.sort((a, b) => {
+      return new Date(a.create_at).getTime() - new Date(b.create_at).getTime();
+    });
+  });
+  
+  console.log('sorted histories', histories.value);
 });
-
 </script>
 
 <template>
@@ -128,7 +138,7 @@ onMounted(async() => {
             <div class="card-footer">
             <div class="message-count">
                 <i class="el-icon-chat-dot-round"></i>
-                {{ history.messages.length===10?'10+' : history.messages.length }} 条消息
+                {{ history.messages.length>=10?'10+' : history.messages.length }} 条消息
             </div>
             <div class="card-actions">
                 <el-button 
@@ -154,16 +164,16 @@ onMounted(async() => {
         <!-- 详情弹窗 -->
         <el-dialog 
         v-model="detailVisible" 
-        title="对话详情" 
+        :title="detailData.name" 
         width="60%" 
         custom-class="history-detail-dialog"
         >
         <div class="detail-header">
-            <div class="detail-title">{{ detailData.name }}</div>
+            <!-- <div class="detail-title">{{ detailData.name }}</div>/ -->
             <div class="detail-meta">
             <div class="meta-item">
                 <i class="el-icon-time"></i>
-                <span>{{ detailData.create_at }}</span>
+                <span>{{ detailData.update_at }}</span>
             </div>
             <div class="meta-item">
                 <i class="el-icon-cpu"></i>
@@ -171,8 +181,16 @@ onMounted(async() => {
             </div>
             <div class="meta-item">
                 <i class="el-icon-chat-dot-round"></i>
-                <span>{{ detailData.messages.length===10?'10+':detailData.messages.length }} 条消息</span>
+                <span>{{ detailData.messages.length>=10?'10+':detailData.messages.length }} 条消息</span>
             </div>
+            </div>
+            <div class="detail-content"> 
+                <div 
+                v-for="message in detailData.messages" 
+                :key="message.create_at" 
+                class="message" 
+                :class="{ 'user-message': message.role==='user', 'ai-message': message.role==='assistant' }"
+                >{{ message.content }}</div>
             </div>
         </div>
         <template #footer>
@@ -292,6 +310,7 @@ onMounted(async() => {
 .detail-meta {
   display: flex;
   gap: 25px;
+  justify-content: space-between;
 }
 
 .meta-item {
@@ -299,11 +318,39 @@ onMounted(async() => {
   align-items: center;
   color: #5a5e7d;
   font-size: 0.95rem;
+  text-align: right;
 }
 
 .meta-item i {
   margin-right: 8px;
   font-size: 1.1rem;
+}
+
+.detail-content { 
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.message { 
+  padding: 15px;
+  border-radius: 16px;
+  background: #fafafa;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+}
+
+.user-message { 
+  background: #f0f0f0;
+}
+.ai-message { 
+  background: #fafafa;
+}
+.message:last-child { 
+  margin-bottom: 0;
+}
+
+.message:not(:last-child) { 
+  animation: fadeIn 0.5s ease-in-out;
 }
 
 @keyframes fadeIn {

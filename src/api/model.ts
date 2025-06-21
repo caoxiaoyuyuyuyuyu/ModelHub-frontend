@@ -50,9 +50,10 @@ export const createConfig = async (data: any) => {
 }
 
 export const updateConfig = async (data: any) => { 
-    return await api.post('/model/modelconfig/update', data)
+    const response = await api.post('/model/modelconfig/update', data)
+    return response.data.data
 }
 
 export const deleteModelConfig = async (id: number) => { 
-    return await api.post('/model/modelconfig/delete', {id})
+    return await api.delete(`/model/modelconfig/delete/${id}`)
 }

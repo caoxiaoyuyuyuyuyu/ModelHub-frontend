@@ -174,7 +174,6 @@ const goToLogin = () => {
   align-items: center;
   /* min-height: 100vh; */
   height: calc(var(--vh, 1vh) * 100 - 280px);
-  background-color: #f5f7fa;
   padding: 2rem;
 }
 

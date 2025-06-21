@@ -36,7 +36,7 @@ const workspaces = ref([
         v-for="workspace in workspaces" 
         :key="workspace.id" :to="workspace.route" class="workspace-card">
           <div class="card-icon" :style="{ background: workspace.bgColor }">
-            <component :is="workspace.icon" class="icon" />
+            <component :is="workspace.icon" class="icon" :style="{height: 'inherit'}"/>
           </div>
           <div class="card-content">
             <h3>{{ workspace.title }}</h3>
@@ -66,7 +66,7 @@ const workspaces = ref([
   text-decoration: none;
   color: inherit;
   margin-bottom: 20px;
-  min-width: 400px;
+  min-width: 500px;
 }
 
 .workspace-card:hover {
@@ -75,7 +75,7 @@ const workspaces = ref([
 }
 
 .card-icon {
-  height: 120px;
+  height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;

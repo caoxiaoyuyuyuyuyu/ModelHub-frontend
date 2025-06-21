@@ -43,7 +43,15 @@ const filteredHistories = computed(() => {
       history.model_config_id === models.value.find(m => m.id === selectedModel.value)?.id;
     
     // 日期过滤（简化处理）
-    const matchesDate = selectedDateRange.value === 'all' || true;
+    console.log(selectedDateRange.value)
+    function is_match_date(date_str: string, range: string) {
+      const date = new Date(date_str);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      return days <= parseInt(range);
+    }
+    const matchesDate = selectedDateRange.value === 'all' || is_match_date(history.update_at, selectedDateRange.value);
     
     return matchesSearch && matchesModel && matchesDate;
   });
@@ -92,7 +100,7 @@ onMounted(async() => {
 
         <!-- 筛选区域 -->
         <div class="filter-section">
-        <div class="filter-group">
+        <!-- <div class="filter-group">
             <el-input
             v-model="searchQuery"
             placeholder="搜索对话历史..."
@@ -103,18 +111,18 @@ onMounted(async() => {
                 <i class="el-icon-search"></i>
             </template>
             </el-input>
-        </div>
+        </div> -->
         
         <div class="filter-group">
             <el-select v-model="selectedDateRange" placeholder="时间范围" clearable>
-            <el-option label="今天" value="today"></el-option>
-            <el-option label="最近7天" value="7days"></el-option>
-            <el-option label="最近30天" value="30days"></el-option>
+            <el-option label="今天" value="0"></el-option>
+            <el-option label="最近7天" value="7"></el-option>
+            <el-option label="最近30天" value="30"></el-option>
             <el-option label="全部" value="all"></el-option>
             </el-select>
         </div>
         
-        <div class="filter-group">
+        <!-- <div class="filter-group">
             <el-select v-model="selectedModel" placeholder="模型筛选" clearable>
             <el-option 
                 v-for="model in models" 
@@ -123,7 +131,7 @@ onMounted(async() => {
                 :value="model.id"
             ></el-option>
             </el-select>
-        </div>
+        </div> -->
         </div>
 
         <!-- 历史对话卡片 -->
@@ -203,6 +211,10 @@ onMounted(async() => {
 </template>
 
 <style scoped>
+.history-container { 
+  flex: 1;
+  padding-bottom: 4rem;
+}
 .history-header {
   text-align: center;
   margin-bottom: 40px;
@@ -214,7 +226,7 @@ onMounted(async() => {
   color: #1a1d2b;
   margin-bottom: 10px;
   background: linear-gradient(135deg, #3a6eff 0%, #5b8cff 100%);
-  -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
 }
@@ -224,15 +236,17 @@ onMounted(async() => {
   gap: 20px;
   margin-bottom: 30px;
   flex-wrap: wrap;
-  background: white;
+  /* background: white; */
+  width: 25%;
   padding: 20px;
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .filter-group {
-  flex: 1;
-  min-width: 250px;
+  /* flex: 1; */
+  /* min-width: 250px; */
+  width: 100%;
 }
 
 .search-input {

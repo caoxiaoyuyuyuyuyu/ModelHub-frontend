@@ -145,10 +145,12 @@ const handleConfiguratorChange = async (newValue: Configurator) => {
       </div>
       
       <!-- 模型网格 -->
-      <div class="model-grid">
-        <ModelCard
-        v-for="model in models" 
-        :key="model.id"  v-bind="model" />
+      <div class="model-grid-container">
+        <div class="model-grid">
+          <ModelCard
+          v-for="model in models" 
+          :key="model.id"  v-bind="model" />
+        </div>
       </div>
       <ModelPagination
         :current-page="currentPage"
@@ -208,12 +210,15 @@ const handleConfiguratorChange = async (newValue: Configurator) => {
   color: #909399;
   font-size: 0.95rem;
 }
-
+.model-grid-container{
+  width: -webkit-fill-available;
+}
 .model-grid {
-  grid-template-columns: repeat(4, minmax(340px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 4rem 2rem;
-  min-width: 1068px;
+  /* min-width: 1068px; */
   display: grid;
+  align-items: stretch; 
 }
 
 /* 调整单选按钮样式 */
@@ -240,5 +245,28 @@ const handleConfiguratorChange = async (newValue: Configurator) => {
 /* 悬停状态的样式调整（可选） */
 :deep(.el-radio-button:not(.is-active):hover .el-radio-button__inner) {
   background-color: #f5f7fa; /* 悬停时的背景色 */
+}
+
+@media (min-width: 1024px) {
+  .model-grid {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
+
+@media (min-width: 1536px) {
+  .model-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 2048px) {
+  .model-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 2560px) {
+  .model-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 </style>

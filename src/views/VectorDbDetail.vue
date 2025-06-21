@@ -19,6 +19,7 @@ const uploadLoading = ref(false);
 const vectorDbId = ref<number>(parseInt(route.params.id as string));
 const router = useRouter();
 const queryInput = ref('');
+const goBack = () => router.go(-1);
 
 // 数据库基本信息
 const vectorDb = ref<VectorDbForm>({
@@ -347,9 +348,7 @@ onMounted(async() => {
     <div class="content-section">
       <!-- 返回按钮和标题 -->
       <div class="header-section">
-        <router-link to="/database" class="back-link">
-          <el-button :icon="Back" type="text">返回列表</el-button>
-        </router-link>
+          <el-button @click="goBack" :icon="Back" type="text">返回上一页</el-button>
         <h2>向量数据库详情</h2>
       </div>
       
@@ -641,10 +640,6 @@ const results = await client.query({
   align-items: center;
   margin-bottom: 1.5rem;
   gap: 1rem;
-}
-
-.back-link {
-  text-decoration: none;
 }
 
 .info-card {

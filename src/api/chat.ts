@@ -27,5 +27,17 @@ export const chat = async (formDate: FormData) => {
     const response = await api.post('/chat/', formDate, { headers: { 'Content-Type': 'multipart/form-data' } })
     return {...response.data.data.response,
       create_at: getCurrentTime(),
+      conversation_id: response.data.data.conversation_id,
+      conversation_name : response.data.data.conversation_name
+    }
+}
+
+export const rechat = async (formDate: FormData) => { 
+    const response = await api.post('/chat/rechat', formDate, { headers: { 'Content-Type': 'multipart/form-data' } })
+    console.log("原始",response)
+    return {...response.data.data.response,
+      create_at: getCurrentTime(),
+      conversation_id: response.data.data.conversation_id,
+      conversation_name : response.data.data.conversation_name
     }
 }

@@ -1,10 +1,15 @@
 .page-container {
   margin: 0 auto;
   /* padding: 1rem; */
-  flex: 1;
+  /* flex: 1; */
+  height: calc(100vh - 170px); 
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+.content-section{
+  min-width: -webkit-fill-available;
+  padding-bottom: 80px;
 }
 .subtitle {
   color: #666;

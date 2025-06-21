@@ -1,6 +1,6 @@
 export class document { 
     id!: number;
-    orignal_name!: string;
+    original_name!: string;
     type!: string;
     size!: number;
     save_path!: string;

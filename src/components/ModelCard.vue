@@ -16,7 +16,7 @@ const props = defineProps<ModelCardProps>();
 const router = useRouter();
 const handleExperience = () => {
   router.push({
-    path: '/chat',
+    path: '/intro',
     query: {
       config_name: props.name,
       model_config_id: props.id
@@ -61,7 +61,7 @@ const handleExperience = () => {
   border-radius: 8px;
   padding: 1.5rem;
   transition: all 0.3s;
-  height: 100%;
+  /* height: 100%; */
   display: flex;
   flex-direction: column;
   /* background-color: #fff; */

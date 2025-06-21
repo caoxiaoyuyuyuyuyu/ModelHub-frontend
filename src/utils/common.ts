@@ -3,5 +3,18 @@ export const randomString = (len: number) => {
 }
 
 export const getCurrentTime = () => { 
-    return new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')
+    // Asia/Shanghai
+    return new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+}
+
+export const getCurrentStatus = () => { 
+    const currentTime = getCurrentTime()
+    const currentHour = Number(currentTime.split(' ')[1].split(':')[0])
+    if (currentHour >= 6 && currentHour < 12) { 
+        return '上午'
+    } else if (currentHour >= 12 && currentHour < 18) { 
+        return '下午'
+    } else { 
+        return '晚上'
+    }
 }

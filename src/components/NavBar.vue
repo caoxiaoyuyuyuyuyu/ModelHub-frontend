@@ -30,7 +30,7 @@ const handleLogout = () => {
         <RouterLink to="/history">对话历史</RouterLink>
       </li>
       <li>
-        <RouterLink to="/about">关于</RouterLink>
+        <RouterLink to="/user">个人中心</RouterLink>
       </li>
       <div class="navbar-right">
         <template v-if="userStore.isAuthenticated">
@@ -180,5 +180,18 @@ const handleLogout = () => {
 
 .login-button:hover {
   background-color: #ecf5ff;
+}
+/* 当导航栏背景为白色时，调整链接颜色 */
+.sticky-header.scrolled .navbar-menu a {
+  color: #2c3e50;
+}
+
+.sticky-header.scrolled .navbar-menu a.router-link-exact-active {
+  color: #4277b9;
+}
+
+/* 确保logo在白色背景下仍然可见 */
+.sticky-header.scrolled .logo-link {
+  color: #2c3e50;
 }
 </style>

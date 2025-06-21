@@ -1,12 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import AboutView from '../views/AboutView.vue'
+import UserView from '../views/UserGraphView.vue'
 import WorkSpaceView from '../views/WorkSpaceView.vue'
-import ConfigView  from '../views/ConfigView.vue'
+import ConfigView  from '../views/ConfigCardView.vue'
+import ModelConfigDetail from '../views/ModelConfigDetail.vue'
 import VectorDbView from '../views/VectorDbView.vue'
 import VectorDbDetail from '../views/VectorDbDetail.vue'
 import ChatView from '../views/ChatView.vue';
 import ChatHistoryView from '../views/ChatHistoryView.vue';
+import ChatIntroView from '../views/ChatIntroView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import { useUserStore } from '../stores/user'
@@ -21,9 +23,9 @@ const router = createRouter({
       meta: { requiresAuth: false } // 需要登录
     },
     {
-      path: '/about',
-      name: 'about',
-      component: AboutView,
+      path: '/user',
+      name: 'user',
+      component: UserView,
       meta: { requiresAuth: true }
     },
     {
@@ -57,6 +59,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/intro',
+      name: 'intro',
+      component: ChatIntroView,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/history',
       name: 'history',
       component: ChatHistoryView,
@@ -73,6 +81,12 @@ const router = createRouter({
       name: 'register',
       component: RegisterView,
       meta: { requiresAuth: false }
+    },
+    {
+      path: '/config/:id',
+      name: 'configDetail',
+      component: ModelConfigDetail,
+      meta: { requiresAuth: true }
     }
   ],
   scrollBehavior(to, from, savedPosition) {

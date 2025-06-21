@@ -32,10 +32,10 @@ export const useUserStore = defineStore('user', () => {
       const data = response.data.data
       
       user.value = {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        avatar: data.avatar || '/public/vite.svg',
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          avatar: ("http://localhost:5000/user/avatar/" + data.avatar) || '/public/vite.svg',
       }
       token.value = data.token
       isAuthenticated.value = true
@@ -134,6 +134,12 @@ export const useUserStore = defineStore('user', () => {
   function getToken() {
     return token.value
   }
+
+  function updateUserAvatar(avatar: string) {
+    if (user.value) {
+      user.value.avatar = ("http://localhost:5000/user/avatar/" + avatar) || '/public/vite.svg';
+    }
+  }
   
   return {
     user,
@@ -143,6 +149,7 @@ export const useUserStore = defineStore('user', () => {
     register,
     logout,
     init,
-    getToken
+    getToken,
+    updateUserAvatar
   }
 })

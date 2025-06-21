@@ -116,7 +116,6 @@ const goToRegister = () => {
   justify-content: center;
   align-items: center;
   height: calc(var(--vh, 1vh) * 100 - 280px);
-  background-color: #f5f7fa;
   padding: 2rem;
 }
 

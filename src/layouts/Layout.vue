@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import NavBar from '@/components/NavBar.vue'
 import { useUserStore } from '../stores/user'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { useThemeStore } from '../stores/theme' // 引入主题store
 
 // 初始化用户状态
 const userStore = useUserStore()
 userStore.init()
+
+// 初始化主题状态
+const themeStore = useThemeStore()
 
 // 添加滚动监听逻辑
 const isScrolled = ref(false)
@@ -16,11 +20,29 @@ const handleScroll = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
+  // 从本地存储加载主题
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme && themeStore.themes.some(t => t.id === savedTheme)) {
+    themeStore.setTheme(savedTheme)
+    updateBackground(themeStore.currentTheme.background)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
 })
+// 动态更新背景样式
+const updateBackground = (background: string) => {
+  const bgElement = document.querySelector('.layout-container') as HTMLElement
+  if (bgElement) {
+    bgElement.style.setProperty('--theme-background', background)
+  }
+}
+
+// 监听主题变化
+watch(() => themeStore.currentTheme, (newTheme) => {
+  updateBackground(newTheme.background)
+}, { immediate: true })
 </script>
 
 <template>
@@ -50,6 +72,9 @@ onUnmounted(() => {
   width: 100%;
   position: relative; /* 添加相对定位 */
   /* background-color: #ffffff; 保留白色背景 */
+  /* 使用 CSS 变量设置背景 */
+  --theme-background: radial-gradient(circle at 30% 70%, #fdc3b0, transparent 80%),
+                      radial-gradient(circle at 70% 30%, #ffecd2, transparent 80%);
 }
 
 /* 新增背景层 */
@@ -61,9 +86,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   z-index: -1; /* 置于内容下方 */
-  background-image: 
-    radial-gradient(circle at 30% 70%, #fdc3b0, transparent 80%),
-    radial-gradient(circle at 70% 30%, #ffecd2, transparent 80%);
+  background-image: var(--theme-background);
   background-color: #ffffff;
 }
 

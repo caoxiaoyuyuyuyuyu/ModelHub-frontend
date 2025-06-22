@@ -5,7 +5,7 @@ import ModelPagination from '@/components/ModelPagination.vue';
 import { Search } from '@element-plus/icons-vue';
 import { getConfigurators } from '../api/user';
 import { getModelConfigs, getUserModelConfig } from '../api/model';
-import { ModelConfigBase } from '../types/model_config';
+import { ModelConfigBase, config_info_map } from '../types/model_config';
 
 interface Configurator {
   id: number;
@@ -78,6 +78,38 @@ const handleConfiguratorChange = async (newValue: Configurator) => {
     models.value = await getUserModelConfig(newValue.id);
   }
 };
+
+const handleSearch = async() => {
+  searchQuery.value = searchQuery.value.trim();
+  if(!searchQuery.value || searchQuery.value === "") {
+    models.value = await getModelConfigs();
+    return 
+  }
+  // 搜索逻辑
+  // console.log('Searching...',searchQuery.value);
+  // console.log(models.value);
+  models.value = await getModelConfigs();
+  models.value = models.value.filter(
+    (model:ModelConfigBase) => {
+      console.log(model.name);
+      return model.name.trim() === (searchQuery.value).trim()}
+  );
+};
+
+const handleSupplierChange = async () => {
+  console.log('Supplier changed:', selectedSupplier.value);
+  if (selectedSupplier.value === "全部"){
+    models.value = await getModelConfigs();
+    return
+  }
+  models.value = await getModelConfigs();
+  models.value = models.value.filter(
+    (model:ModelConfigBase) => {
+      console.log(model.name);
+      return config_info_map[selectedSupplier.value].includes(model.base_model_name)}
+  );
+};
+
 </script>
 
 <template>
@@ -92,11 +124,11 @@ const handleConfiguratorChange = async (newValue: Configurator) => {
         <ElInput
           v-model="searchQuery"
           placeholder="搜索模型..."
-          clearable
+          clearable @keydown.enter.native.prevent="handleSearch"
           class="search-input"
         >
           <template #append>
-            <ElButton :icon="Search" />
+            <ElButton @click="handleSearch" :icon="Search" />
           </template>
         </ElInput>
       </div>
@@ -105,7 +137,7 @@ const handleConfiguratorChange = async (newValue: Configurator) => {
       <div class="filter-section">
         <div class="filter-group">
           <span class="filter-label">供应商</span>
-          <ElRadioGroup v-model="selectedSupplier" class="filter-options">
+          <ElRadioGroup v-model="selectedSupplier" class="filter-options" @change="handleSupplierChange" >
             <ElRadioButton 
               v-for="supplier in suppliers" 
               :key="supplier" 

@@ -507,21 +507,21 @@ const changeAvatar = () => {
             :class="['tab', { 'active': activeTab === 'models' }]"
             @click="activeTab = 'models'"
           >
-            <i class="el-icon-cpu"></i> 模型配置
+            <el-icon><cpu /></el-icon> 模型配置
             <span class="count-badge">{{ modelConfigs.length }}</span>
           </button>
           <button 
             :class="['tab', { 'active': activeTab === 'vector' }]"
             @click="activeTab = 'vector'"
           >
-            <i class="el-icon-data-analysis"></i> 向量数据库
+            <el-icon><data-analysis /></el-icon> 向量数据库
             <span class="count-badge">{{ vectorDBs.length }}</span>
           </button>
           <button 
             :class="['tab', { 'active': activeTab === 'connections' }]"
             @click="activeTab = 'connections'"
           >
-            <i class="el-icon-link"></i> 配置关系图
+            <el-icon><Connection /></el-icon> 配置关系图
           </button>
         </div>
         
@@ -588,7 +588,7 @@ const changeAvatar = () => {
               class="vector-card"
             >
               <div class="vector-header">
-                <i class="el-icon-database"></i>
+                <el-icon><database /></el-icon>
                 <h3>{{ db.name }}</h3>
               </div>
               <div class="vector-body">
@@ -602,7 +602,7 @@ const changeAvatar = () => {
               </div>
               <div class="vector-footer">
                 <span class="used-by">
-                  <i class="el-icon-connection"></i>
+                  <el-icon><connection /></el-icon>
                   被 {{ modelConfigs.filter(c => c.vector_db_id === db.id).length }} 个模型使用
                 </span>
                 <button class="action-button" @click="navigateToDetail(db.id)">管理</button>
@@ -614,7 +614,7 @@ const changeAvatar = () => {
         <!-- 关系图区域 -->
         <div class="tab-content" v-if="activeTab === 'connections'">
           <div class="connections-container">
-            <div ref="relationGraph" style="width: 100%;height: 100%;"></div>"
+            <div ref="relationGraph" style="width: 100%;min-height: 1000px;"></div>"
           </div>
         </div>
       </div>
@@ -626,7 +626,7 @@ const changeAvatar = () => {
 .content-section {
     display: flex;
     flex-direction: column;
-    min-height: -webkit-fill-available;
+    /* min-height: -webkit-fill-available; */
 }
 .change-avatar-btn {
   margin-top: 10px;
@@ -1042,6 +1042,7 @@ flex-direction: column;
 .connections-container {
   width: 100%;
   height: 100%;
+  min-height: 1000px;
   background: white;
   border-radius: 8px;
   overflow: hidden;

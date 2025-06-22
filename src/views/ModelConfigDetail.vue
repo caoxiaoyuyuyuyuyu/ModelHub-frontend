@@ -102,7 +102,7 @@ const goBack = () => router.go(-1);
           <el-button @click="goBack" :icon="Back" type="text">返回上一页</el-button>
         <h2>模型配置详情</h2>
         <ElButton type="primary" @click="handleEdit" class="edit-btn">
-          <i class="el-icon-edit"></i> 编辑配置
+          <el-icon><edit /></el-icon> 编辑配置
         </ElButton>
       </div>
 

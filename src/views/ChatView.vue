@@ -5,7 +5,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElDrawer, ElButton, ElInput, ElIcon } from 'element-plus';
 import { Fold, Expand, Promotion } from '@element-plus/icons-vue';
 import type { Conversation, ChatMessage } from '../types/chat';
-import { getConversations, getMessages, chat, rechat } from '../api/chat';
+import { getConversations, getMessages, chat, rechat, setChatHistory } from '../api/chat';
 import { getCurrentTime } from '../utils/common';
 import { getModelConfig } from '../api/model';
 import { Refresh } from '@element-plus/icons-vue';
@@ -153,7 +153,10 @@ const hanleChangeConversation = async (id: number, model_config_id: number) => {
     formData.append('conversation_id', id.toString());
     
     // 获取新对话的消息
-    const ori_messages = await getMessages(formData);
+    const conversaton = (await getMessages(formData));
+    ConversationInfo.value = conversaton.conversation_info;
+    const ori_messages = conversaton.history;
+
     
     // 按时间排序消息
     messages.value = ori_messages.messages.sort(
@@ -163,7 +166,7 @@ const hanleChangeConversation = async (id: number, model_config_id: number) => {
     
     // 加载模型配置名称（如果尚未加载）
     if (!configName.value) {
-      configName.value = await getModelConfig(model_config_id);
+      configName.value = (await getModelConfig(model_config_id)).name;
     }
     
     // 滚动到底部
@@ -190,6 +193,16 @@ const hanleNewConversation = async () => {
     }
   });
 };
+
+const ConversationInfo = ref<Conversation>({
+  id: 0,
+  name: '',
+  model_config_id: 0,
+  messages: [],
+  chat_history: 10,
+  create_at: '',
+  update_at: ''
+});
 const loadDate = async () => { 
   if (!configName.value){
     configName.value = await getModelConfig(Number(modelConfigId.value));
@@ -197,9 +210,11 @@ const loadDate = async () => {
   scrollToBottom();
   chatHistory.value = await getConversations();
   if (conversationId.value) {
-    const formDate = new FormData();
-    formDate.append('conversation_id', conversationId.value);
-    const ori_messages = await getMessages(formDate);
+    const formData = new FormData();
+    formData.append('conversation_id', conversationId.value);
+    const conversaton = (await getMessages(formData));
+    ConversationInfo.value = conversaton.conversation_info;
+    const ori_messages = conversaton.history;
     messages.value = ori_messages.messages.sort((a: ChatMessage, b: ChatMessage) => new Date(a.create_at).getTime() - new Date(b.create_at).getTime());
   }else{
     messages.value = [{
@@ -208,6 +223,11 @@ const loadDate = async () => {
       create_at: getCurrentTime(),
     }];
   }
+};
+const handleChatHistoryChange = (e: any) => { 
+  setChatHistory( conversationId.value,e.target.value).then(() => {
+    ConversationInfo.value.chat_history = e.target.value;
+  });
 };
 
 // 页面加载时，根据modelConfigId加载模型配置
@@ -229,7 +249,7 @@ const scrollToBottom = () => {
 <template>
   <div class="chat-header">
     <ElButton @click="toggleDrawer" size="large" :icon="drawerVisible ? Fold : Expand" circle class="toggle-btn" />
-    <h4>{{ configName }}</h4>
+    <h4>{{ ConversationInfo?.name }}</h4>
     <div class="model-info">{{ configName }} 提供服务</div>
   </div>
   <div class="chat-container">
@@ -305,13 +325,28 @@ const scrollToBottom = () => {
             resize="none"
             class="message-input"
           />
-          <div class="input-actions" @click="sendMessage(userInput)"
-          :style="{
-            background: hasInput 
-              ? 'linear-gradient(135deg, #5b8cff 0%, #3a6eff 100%)' 
-              : '#c0c4cc'
-          }">
-            <el-icon size="25" color="#fff"><Promotion /></el-icon>
+          <div class="input-info-box">
+            <div class="context-length-container">
+              <label>上下文参考长度：</label>
+              <input
+                type="number"
+                @change="handleChatHistoryChange"
+                v-model="ConversationInfo.chat_history"
+                :min="1"
+                :max="10"
+                class="context-length-input"
+                step="1"
+                style="appearance: auto;"
+              />
+            </div>
+            <div class="input-actions" @click="sendMessage(userInput)"
+            :style="{
+              background: hasInput 
+                ? 'linear-gradient(135deg, #5b8cff 0%, #3a6eff 100%)' 
+                : '#c0c4cc'
+            }">
+              <el-icon size="25" color="#fff"><Promotion /></el-icon>
+            </div>
           </div>
         </div>
       </div>
@@ -598,6 +633,20 @@ const scrollToBottom = () => {
   font-weight: 400;
 }
 
+.input-info-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  flex: 1;
+  width: 100%; 
+}
+
+.input-info-box >span { 
+  color: #a8a8a8;
+  margin-left: 1rem;
+}
 
 /* 发送按钮区域 */
 .input-actions {
@@ -851,20 +900,20 @@ const scrollToBottom = () => {
 }
 
 /* 调整AI消息的Markdown样式 */
-.ai-message .markdown-body :deep(pre) {
+.ai-message .message-text :deep(pre) {
   background-color: #f0f4ff;
 }
 
-.ai-message .markdown-body :deep(code) {
+.ai-message .message-text :deep(code) {
   background-color: rgba(58, 110, 255, 0.08);
 }
 
 /* 调整用户消息的Markdown样式 */
-.user-message .markdown-body :deep(pre) {
+.user-message .message-text :deep(pre) {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-.user-message .markdown-body :deep(code) {
+.user-message .message-text :deep(code) {
   background-color: rgba(255, 255, 255, 0.15);
 }
 
@@ -873,5 +922,34 @@ const scrollToBottom = () => {
   max-width: 100%;
   box-sizing: content-box;
   background-color: #fff;
+}
+
+.context-length-container {
+  display: flex;
+  align-items: center;
+  margin-left: 1rem;
+  color: #cacaca;
+}
+
+.context-length-input {
+  width: 40px;
+  text-align: center;
+  color: #cacaca;
+  border: none;
+  font-size: 1rem;
+}
+
+.number-input {
+  display: flex;
+  align-items: center;
+}
+
+.spin-button {
+  width: 25px;
+  height: 25px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  margin: 0 2px;
+  cursor: pointer;
 }
 </style>

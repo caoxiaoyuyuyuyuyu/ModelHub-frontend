@@ -41,3 +41,11 @@ export const rechat = async (formDate: FormData) => {
       conversation_name : response.data.data.conversation_name
     }
 }
+
+export const setChatHistory = async (conversation_id: string, chat_history: string) => { 
+  const formData = new FormData()
+  formData.append('conversation_id', conversation_id)
+  formData.append('chat_history', chat_history)
+  const response = await api.post('/chat/set', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return response.data.data
+}

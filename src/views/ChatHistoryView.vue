@@ -4,9 +4,10 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { Conversation } from '../types/chat';
 import { onMounted } from 'vue';
-import { getModelInfos } from '../api/model';
+import { getModelConfig, getModelInfos } from '../api/model';
 import type { ModelInfo } from '../types/model_config';
 import { getConversations } from '../api/chat';
+import { getFormatTimeString } from '../utils/common';
 
 const router = useRouter();
 
@@ -20,7 +21,7 @@ const detailData = ref<Conversation>({
   name: '',
   messages: [],
   model_config_id: 0,
-  chat_history: '',
+  chat_history: 10,
   create_at: '',
   update_at: '',
 });
@@ -33,7 +34,7 @@ const histories = ref<Conversation[]>([]);
 
 // 过滤后的历史记录
 const filteredHistories = computed(() => {
-  return histories.value.filter(history => {
+  const filtered = histories.value.filter(history => {
     // 搜索过滤
     const matchesSearch = searchQuery.value === '' || 
       history.name.toLowerCase().includes(searchQuery.value.toLowerCase())
@@ -49,29 +50,32 @@ const filteredHistories = computed(() => {
       const now = new Date();
       const diff = now.getTime() - date.getTime();
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      return days <= parseInt(range);
+      return days < parseInt(range);
     }
     const matchesDate = selectedDateRange.value === 'all' || is_match_date(history.update_at, selectedDateRange.value);
     
     return matchesSearch && matchesModel && matchesDate;
   });
+  return filtered.sort((a, b) => new Date(b.update_at).getTime() - new Date(a.update_at).getTime());
 });
-
+const modelName = ref('');
 // 显示详情弹窗
-const showDetail = (history: Conversation) => {
+const showDetail = async (history: Conversation) => {
   detailData.value = history;
   detailVisible.value = true;
+  const model_config = await getModelConfig(history.model_config_id)
+  modelName.value = model_config.name;
 };
 
 // 继续对话
-const continueChat = (history: Conversation) => {
-  var configName = models.value.find(m => m.id === history.model_config_id)?.model_name;
-  console.log('configName', configName);
+const continueChat = async (history: Conversation) => {
+  const model_config = await getModelConfig(history.model_config_id)
+  modelName.value = model_config.name;
   router.push({
     path: '/chat',
     query: {
       conversation_id: history.id,
-      config_name: configName,
+      config_name: modelName.value,
       model_config_id: history.model_config_id
     }
   });
@@ -90,6 +94,7 @@ onMounted(async() => {
   
   console.log('sorted histories', histories.value);
 });
+
 </script>
 
 <template>
@@ -108,7 +113,7 @@ onMounted(async() => {
             class="search-input"
             >
             <template #prefix>
-                <i class="el-icon-search"></i>
+                <el-icon><search /></el-icon>
             </template>
             </el-input>
         </div> -->
@@ -141,11 +146,14 @@ onMounted(async() => {
             :key="index" 
             class="history-card"
         >
+            <div class="card-header" >
             <h4>{{ history.name }}</h4>
             
+            <span class="card-date"><el-icon><clock /></el-icon>{{ getFormatTimeString(history.update_at) }}</span>
+            </div>
             <div class="card-footer">
             <div class="message-count">
-                <i class="el-icon-chat-dot-round"></i>
+                <el-icon><chat-dot-round /></el-icon>
                 {{ history.messages.length>=10?'10+' : history.messages.length }} 条消息
             </div>
             <div class="card-actions">
@@ -180,15 +188,15 @@ onMounted(async() => {
             <!-- <div class="detail-title">{{ detailData.name }}</div>/ -->
             <div class="detail-meta">
             <div class="meta-item">
-                <i class="el-icon-time"></i>
-                <span>{{ detailData.update_at }}</span>
+                <el-icon><clock /></el-icon>
+                <span>{{ getFormatTimeString(detailData.update_at) }}</span>
             </div>
             <div class="meta-item">
-                <i class="el-icon-cpu"></i>
+                <!-- <el-icon><cpu /></el-icon> -->
                 <span>{{ models.find((item)=>{return item.id===detailData.model_config_id})?.model_name }}</span>
             </div>
             <div class="meta-item">
-                <i class="el-icon-chat-dot-round"></i>
+                <el-icon><chat-dot-round /></el-icon>
                 <span>{{ detailData.messages.length>=10?'10+':detailData.messages.length }} 条消息</span>
             </div>
             </div>
@@ -198,12 +206,17 @@ onMounted(async() => {
                 :key="message.create_at" 
                 class="message" 
                 :class="{ 'user-message': message.role==='user', 'ai-message': message.role==='assistant' }"
-                >{{ message.content }}</div>
+                >{{ message.content.slice(0,50) }}</div>
             </div>
         </div>
         <template #footer>
+          <div class="footer-section">
+            <span class="model-name" >{{ modelName }}</span>
+            <div>
             <el-button @click="detailVisible = false">关闭</el-button>
             <el-button type="primary" @click="continueChat(detailData)">继续对话</el-button>
+            </div>
+          </div>
         </template>
         </el-dialog>
     </div>
@@ -282,6 +295,18 @@ onMounted(async() => {
   padding: 0 20px;
 }
 
+.card-header { 
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-date {
+  color: #9b9b9b;
+  padding-right: 1rem;
+}
+
 .card-footer {
   display: flex;
   justify-content: space-between;
@@ -355,9 +380,11 @@ onMounted(async() => {
 
 .user-message { 
   background: #f0f0f0;
+  text-align: end;
 }
 .ai-message { 
   background: #fafafa;
+  text-align: start;
 }
 .message:last-child { 
   margin-bottom: 0;
@@ -365,6 +392,19 @@ onMounted(async() => {
 
 .message:not(:last-child) { 
   animation: fadeIn 0.5s ease-in-out;
+}
+
+.footer-section { 
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.model-name {
+  font-size: 0.8rem;
+  color: #666;
+  text-align: left;
 }
 
 @keyframes fadeIn {

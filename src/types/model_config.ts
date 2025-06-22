@@ -18,8 +18,9 @@ export class ModelConfigResponse {
 
 export class ModelConfigBase{
   id!: number;
-  title!: string;
+  name!: string;
   author!: string;
+  base_model_name!: string;
   isFeatured!: boolean;
   describe!: string | null;
   avatar!: string | null;
@@ -51,4 +52,9 @@ export interface ModelConfigForm {
   prompt: string | null;
   vector_db_id: number | null;
   is_private: boolean;
+}
+
+export const config_info_map : Record<string, string[]> = { 
+  "通义": ["qwen-plus", "qwen-turbo", "qwen-max", "qwen-max-plus", "qwen-max-turbo", "qwen-max-plus-turbo", "qwen-max-pro", "qwen-max-pro-turbo", "qwen-max-pro-plus", "qwen-max-pro-plus-turbo"],
+  "DeepSeek": ["deepseek-r1", "deepseek-v3"]
 }

@@ -2,13 +2,20 @@
 import { ElAvatar, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import { RouterLink } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { useThemeStore } from '../stores/theme' // 引入主题store
 import router from '../router';
 
 const userStore = useUserStore()
+const themeStore = useThemeStore() // 使用主题store
 
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
+}
+
+// 切换主题
+const changeTheme = (themeId: string) => {
+  themeStore.setTheme(themeId)
 }
 </script>
 
@@ -18,6 +25,7 @@ const handleLogout = () => {
       <RouterLink to="/" class="logo-link">
         <ElAvatar :size="42" src="/public/vite.svg"></ElAvatar>
       </RouterLink>
+      <h2>ModelHub</h2>
     </div>
     <ul class="navbar-menu">
       <li>
@@ -54,6 +62,22 @@ const handleLogout = () => {
                   <span class="dropdown-item-text">服务协议</span>
                   <span class="dropdown-item-icon">📄</span>
                 </ElDropdownItem>
+                <!-- 添加主题切换菜单 -->
+                <ElDropdownItem divided>
+                  <div class="theme-selector">
+                    <span class="theme-label">主题颜色</span>
+                    <div class="theme-colors">
+                      <div 
+                        v-for="theme in themeStore.themes" 
+                        :key="theme.id"
+                        class="theme-color"
+                        :class="{ active: theme.id === themeStore.currentThemeId }"
+                        :style="{ background: theme.background }"
+                        @click="changeTheme(theme.id)"
+                      ></div>
+                    </div>
+                  </div>
+                </ElDropdownItem>
                 <ElDropdownItem divided @click="handleLogout">
                   <span class="dropdown-item-text logout">退出登录</span>
                 </ElDropdownItem>
@@ -78,7 +102,19 @@ const handleLogout = () => {
   align-items: center;
   padding: 1rem 2rem;
   margin: 0 2rem;
-  align-items: flex-end;
+  align-items: center;
+}
+
+.navbar-brand { 
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  width: min-content;
+}
+.navbar-brand >h2 { 
+  margin: 0;
 }
 
 .navbar-menu {
@@ -193,5 +229,52 @@ const handleLogout = () => {
 /* 确保logo在白色背景下仍然可见 */
 .sticky-header.scrolled .logo-link {
   color: #2c3e50;
+}
+/* 主题选择器样式 */
+.theme-selector {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 8px 0;
+}
+
+.theme-label {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.theme-colors {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.theme-color {
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #ebeef5;
+  transition: transform 0.2s;
+}
+
+.theme-color:hover {
+  transform: scale(1.05);
+}
+
+.theme-color.active {
+  box-shadow: 0 0 0 2px #409eff;
+  position: relative;
+}
+
+.theme-color.active::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
 </style>

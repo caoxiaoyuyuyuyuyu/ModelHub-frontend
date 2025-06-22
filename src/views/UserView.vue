@@ -231,21 +231,21 @@ const getConnectionStyle = (config: ModelConfig) => {
             :class="['tab', { 'active': activeTab === 'models' }]"
             @click="activeTab = 'models'"
           >
-            <i class="el-icon-cpu"></i> 模型配置
+            <el-icon><cpu /></el-icon> 模型配置
             <span class="count-badge">{{ modelConfigs.length }}</span>
           </button>
           <button 
             :class="['tab', { 'active': activeTab === 'vector' }]"
             @click="activeTab = 'vector'"
           >
-            <i class="el-icon-data-analysis"></i> 向量数据库
+            <el-icon><data-analysis /></el-icon> 向量数据库
             <span class="count-badge">{{ vectorDBs.length }}</span>
           </button>
           <button 
             :class="['tab', { 'active': activeTab === 'connections' }]"
             @click="activeTab = 'connections'"
           >
-            <i class="el-icon-link"></i> 配置关系图
+            <el-icon><Connection /></el-icon> > 配置关系图
           </button>
         </div>
         
@@ -312,7 +312,7 @@ const getConnectionStyle = (config: ModelConfig) => {
               class="vector-card"
             >
               <div class="vector-header">
-                <i class="el-icon-database"></i>
+                <el-icon><database /></el-icon>
                 <h3>{{ db.name }}</h3>
               </div>
               <div class="vector-body">
@@ -326,7 +326,7 @@ const getConnectionStyle = (config: ModelConfig) => {
               </div>
               <div class="vector-footer">
                 <span class="used-by">
-                  <i class="el-icon-connection"></i>
+                  <el-icon><connection /></el-icon>
                   被 {{ modelConfigs.filter(c => c.vector_db_id === db.id).length }} 个模型使用
                 </span>
                 <button class="action-button" @click="navigateToDetail(db.id)">管理</button>
@@ -375,7 +375,7 @@ const getConnectionStyle = (config: ModelConfig) => {
                       class="node base-model-node"
                       :title="`基础模型: ${model[1] || '未知模型'}`"
                     >
-                      <i class="el-icon-cpu"></i>
+                      <el-icon><cpu /></el-icon>
                       <div class="node-label">
                         {{ model[1] }}
                       </div>
@@ -393,7 +393,7 @@ const getConnectionStyle = (config: ModelConfig) => {
                           :class="{ 'private': config.is_private }"
                           :title="`配置: ${config.name}\n描述: ${config.describe || '无描述'}`"
                         >
-                          <i class="el-icon-setting"></i>
+                          <el-icon><setting /></el-icon>
                           <div class="node-label">{{ config.name }}</div>
                           <div 
                             :class="[
@@ -432,7 +432,7 @@ const getConnectionStyle = (config: ModelConfig) => {
                     class="node vector-node"
                     :title="`数据库: ${db.name}\n描述: ${db.describe || '无描述'}`"
                   >
-                    <i class="el-icon-data-board"></i>
+                    <el-icon><data-analysis /></el-icon>
                     <div class="node-label">{{ db.name }}</div>
                   </div>
                   
@@ -446,7 +446,7 @@ const getConnectionStyle = (config: ModelConfig) => {
                       class="node document-node"
                       :title="`文档: ${doc.original_name}\n类型: ${doc.type}\n大小: ${formatFileSize(doc.size)}`"
                     >
-                      <i class="el-icon-document"></i>
+                      <el-icon><document /></el-icon>
                       <div class="node-label">{{ doc.original_name }}</div>
                     </div>
                   </div>

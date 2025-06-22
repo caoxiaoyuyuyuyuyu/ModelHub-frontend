@@ -16,17 +16,8 @@ export const getModelInfo = async (id: number) => {
     return response.data.data
 }
 export const getModelConfig = async (id: number) => { 
-    // const response = await api.get(`/model/modelconfig/get/${id}`)
-    // return response.data.data
-    // return {
-    //     author: "淘宝",
-    //     base_model_name: "qwen-plus",
-    //     describe: "",
-    //     id: 5,
-    //     name: "前端测试01",
-    //     update_at: "Tue, 17 Jun 2025 21:07:00 GMT"
-    // }
-    return "默认配置"
+    const response = await api.get(`/model/modelconfig/get/${id}`)
+    return response.data.data
 }
 
 export const getModelConfigs = async () => { 

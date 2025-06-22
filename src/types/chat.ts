@@ -6,7 +6,7 @@ export class ChatMessage {
 export class Conversation {
   id!: number;
   name!: string;
-  chat_history!: string;
+  chat_history!: number;
   model_config_id!: number;
   create_at!: string;
   update_at!: string;

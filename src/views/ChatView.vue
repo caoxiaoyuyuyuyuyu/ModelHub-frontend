@@ -497,7 +497,7 @@ const scrollToBottom = () => {
 }
 
 .user-message .message-avatar {
-  margin-right: 0;
+  margin-right: 20px;
   margin-left: 15px;
 }
 

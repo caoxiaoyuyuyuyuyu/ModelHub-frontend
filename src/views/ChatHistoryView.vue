@@ -4,10 +4,11 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { Conversation } from '../types/chat';
 import { onMounted } from 'vue';
-import { getModelConfig, getModelInfos } from '../api/model';
+import { getModelConfig, getModelInfos, getModelConfigByShareId } from '../api/model';
 import type { ModelInfo } from '../types/model_config';
 import { getConversations } from '../api/chat';
 import { getFormatTimeString } from '../utils/common';
+import { ElMessage } from 'element-plus';
 
 const router = useRouter();
 
@@ -36,8 +37,8 @@ const histories = ref<Conversation[]>([]);
 const filteredHistories = computed(() => {
   const filtered = histories.value.filter(history => {
     // 搜索过滤
-    const matchesSearch = searchQuery.value === '' || 
-      history.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    // const matchesSearch = searchQuery.value === '' || 
+    //   history.name.toLowerCase().includes(searchQuery.value.toLowerCase())
     
     // 模型过滤
     const matchesModel = selectedModel.value === null || 
@@ -54,7 +55,8 @@ const filteredHistories = computed(() => {
     }
     const matchesDate = selectedDateRange.value === 'all' || is_match_date(history.update_at, selectedDateRange.value);
     
-    return matchesSearch && matchesModel && matchesDate;
+    // return matchesSearch && matchesModel && matchesDate;
+    return matchesModel && matchesDate;
   });
   return filtered.sort((a, b) => new Date(b.update_at).getTime() - new Date(a.update_at).getTime());
 });
@@ -79,6 +81,27 @@ const continueChat = async (history: Conversation) => {
       model_config_id: history.model_config_id
     }
   });
+};
+
+const startChat = async () => { 
+  if (searchQuery.value.trim() === '') return;
+  try {
+    const model_config = await getModelConfigByShareId(searchQuery.value.trim())
+    if (!model_config) {
+      ElMessage.error('未找到该模型！请检查ShareId是否正确！');
+      return
+    };
+    router.push({
+      path: '/intro',
+      query: {
+        config_name: model_config.name,
+        model_config_id: model_config.id
+      }
+    });
+  } catch (error) {
+    ElMessage.error('未找到该模型！请检查ShareId是否正确！');
+    return
+  }
 };
 
 onMounted(async() => { 
@@ -125,6 +148,20 @@ onMounted(async() => {
             <el-option label="最近30天" value="30"></el-option>
             <el-option label="全部" value="all"></el-option>
             </el-select>
+        </div>
+
+        <div class="filter-group">
+          <el-input
+          v-model="searchQuery"
+          placeholder="请输入ShareId..."
+          clearable
+          class="search-input"
+          >
+          <template #prefix>
+              <el-icon><search /></el-icon>
+          </template>
+          </el-input>
+          <el-button type="primary" @click="startChat">开启对话</el-button>
         </div>
         
         <!-- <div class="filter-group">
@@ -246,20 +283,24 @@ onMounted(async() => {
 
 .filter-section {
   display: flex;
-  gap: 20px;
   margin-bottom: 30px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   /* background: white; */
-  width: 25%;
-  padding: 20px;
+  /* padding: 20px;
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); */
+  flex-direction: row;
+  justify-content: space-between;
 }
 
 .filter-group {
-  /* flex: 1; */
-  /* min-width: 250px; */
-  width: 100%;
+width: 25%;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    display: flex
+;
+    gap: 1rem;
 }
 
 .search-input {

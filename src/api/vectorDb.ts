@@ -28,7 +28,12 @@ export const uploadDocument = async (formData: FormData) => {
     return response.data.data;
 };
 
-
+export const DownloadFile = async (id: number) => {
+    const response = await api.get(`/vector/download_file/${id}`, {
+      responseType: 'blob', // 指定响应类型为二进制数据
+    });
+    return response;
+}
 export const deleteDocument = async (id: number) => { 
     return await api.delete(`/vector/delete/${id}`)
 }

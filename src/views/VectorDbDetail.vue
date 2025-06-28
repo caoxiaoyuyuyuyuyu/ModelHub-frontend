@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { Connection, Delete, Edit, Back, Upload } from '@element-plus/icons-vue';
 import type { VectorDbForm } from '../types/vectorDb';
-import { getVectorDb, updateVectorDb, uploadDocument, deleteDocument, deleteVectorDb } from '../api/vectorDb';
+import { getVectorDb, updateVectorDb, uploadDocument, deleteDocument, deleteVectorDb, DownloadFile } from '../api/vectorDb';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { deleteModelConfig } from '../api/model';
 import { useRouter } from 'vue-router';
@@ -175,11 +175,81 @@ const handleDeleteDocument = async (docId: number) => {
   }
 };
 
-// 下载文档
-const handleDownloadDocument = (id: number) => {
-  // 这里假设后端返回了可以直接下载的URL
-  const downloadUrl = `/api/documents/download/${id}`;
-  window.open(downloadUrl, '_blank');
+// 修改下载文档函数
+const handleDownloadDocument = async (id: number) => {
+  try {
+    // 使用 API 实例发起下载请求
+    const response = await DownloadFile(id);
+
+    // 创建临时 URL
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    
+    // 创建隐藏的下载链接
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // 从响应头获取文件名
+    const contentDisposition = response.headers['content-disposition'];
+    let fileName = 'document';
+
+    if (contentDisposition) {
+      console.log('contentDisposition', contentDisposition);
+      
+      // 正确解析 RFC 5987 标准的文件名
+      const fileNameMatch = contentDisposition.match(/filename\*?=(?:UTF-8'')?"?([^"]+)"?/i);
+      
+      if (fileNameMatch && fileNameMatch[1]) {
+        // 处理可能的编码格式
+        let extractedName = fileNameMatch[1];
+        
+        // 如果是以 UTF-8'' 开头，解码后面的部分
+        if (extractedName.startsWith("UTF-8''")) {
+          extractedName = extractedName.substring(7);
+        }
+        
+        // 尝试解码 URI 组件
+        try {
+          fileName = decodeURIComponent(extractedName);
+        } catch (e) {
+          console.error('文件名解码失败，使用原始值', e);
+          fileName = extractedName;
+        }
+      } else {
+        // 尝试旧式 filename="..." 格式
+        const fallbackMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+        if (fallbackMatch && fallbackMatch[1]) {
+          fileName = fallbackMatch[1];
+        }
+      }
+    }
+
+    // 现在 fileName 应该包含正确的文件名，例如 "张三.txt"
+    console.log('解析后的文件名:', fileName);
+    
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    
+    // 触发下载
+    link.click();
+    
+    // 清理资源
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+    
+  } catch (error) {
+    console.error('下载文档失败:', error);
+    ElMessage.error('下载文档失败');
+  }
+};
+
+// 添加以下两个ref
+const viewDialogVisible = ref(false);
+const currentDocumentContent = ref('');
+
+// 修改handleViewDocument方法
+const handleViewDocument = (text: string) => { 
+  currentDocumentContent.value = text;
+  viewDialogVisible.value = true;
 };
 
 const handleAddModelConfig = () => { 
@@ -259,6 +329,10 @@ const handleQuery = async () => {
     queryLoading.value = true;
     const top_k = 5; // 返回5条结果
     const res = await queryVector(vectorDbId.value, queryInput.value, top_k);
+    if (!res || res.length === 0) {
+      ElMessage.warning('未找到相关结果');
+      return;
+    }
     queryResult.value = res;
     ElMessage.success(`找到 ${res.length} 条相关结果`);
   } catch (error) {
@@ -345,6 +419,21 @@ onMounted(async() => {
         </ElButton>
       </template>
     </ElDialog>
+     <!-- 添加文档内容查看对话框 -->
+    <el-dialog
+      v-model="viewDialogVisible"
+      title="文档内容"
+      width="70%"
+      top="5vh"
+    >
+      <div 
+        class="full-content" 
+        v-html="highlightContent(currentDocumentContent, queryInput)"
+      ></div>
+      <template #footer>
+        <el-button @click="viewDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
     <div class="content-section">
       <!-- 返回按钮和标题 -->
       <div class="header-section">
@@ -610,9 +699,9 @@ const results = await client.query({
                     <el-button 
                       type="primary" 
                       size="small" 
-                      @click="handleDownloadDocument(result.document_id)"
+                      @click="handleViewDocument(result.text)"
                     >
-                      查看文档
+                      查看全部
                     </el-button>
                   </div>
                   
@@ -623,8 +712,14 @@ const results = await client.query({
                 </div>
               </div>
               
+              <div v-else-if="queryLoading" class="empty-results">
+                <el-empty description="正在查询......" />
+              </div>
               <div v-else-if="queryInput" class="empty-results">
-                <el-empty description="未找到相关结果" />
+                <el-empty description="没有找到匹配的文档" />
+              </div>
+              <div v-else class="empty-results">
+                <el-empty description="请输入检索内容" />
               </div>
             </div>
           </div>
@@ -869,6 +964,24 @@ const results = await client.query({
 }
 /* 确保高亮样式在作用域内生效 */
 .result-content :deep(.highlight) {
+  background-color: #ff0;
+  font-weight: bold;
+  padding: 0 2px;
+  color: #000;
+}
+/* 添加以下样式 */
+.full-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 15px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background-color: #fafafa;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.full-content :deep(.highlight) {
   background-color: #ff0;
   font-weight: bold;
   padding: 0 2px;

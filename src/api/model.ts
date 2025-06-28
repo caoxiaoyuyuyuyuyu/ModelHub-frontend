@@ -48,3 +48,8 @@ export const updateConfig = async (data: any) => {
 export const deleteModelConfig = async (id: number) => { 
     return await api.delete(`/model/modelconfig/delete/${id}`)
 }
+
+export const getModelConfigByShareId = async (share_id: string) => { 
+    const response = await api.post(`/model/modelconfig/getshare`,{share_id:share_id})
+    return response.data.data
+}

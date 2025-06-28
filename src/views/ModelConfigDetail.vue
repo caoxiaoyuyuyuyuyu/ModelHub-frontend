@@ -8,6 +8,7 @@ import { getModelInfos } from '../api/model';
 import { fetchOwnVectors } from '../api/vectorDb';
 import { ModelConfig, ModelInfo } from '../types/model_config';
 import type { VectorDbBase } from '../types/vectorDb';
+import type { ElButton } from 'element-plus/lib';
 
 const route = useRoute();
 const configId = ref(Number(route.params.id));
@@ -92,6 +93,11 @@ onMounted(async () => {
     // fetchConfig();
   }
 });
+
+const isVisible = ref(false);
+const toggleVisibility = () => {
+  isVisible.value = !isVisible.value;
+};
 const goBack = () => router.go(-1);
 </script>
 
@@ -132,6 +138,20 @@ const goBack = () => router.go(-1);
                     {{ modelConfig.is_private ? '私有' : '公开' }}
                   </ElTag>
                 </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">share_id
+                  <el-icon 
+                    :class="{'cursor-pointer': true}"
+                    @click="toggleVisibility"
+                  >
+                    <View v-if="isVisible" />
+                    <Hide v-else />
+                  </el-icon></span>
+                <p style="margin: 0;">
+                  <span v-if="isVisible" class="detail-value">{{ modelConfig.share_id }}</span>
+                  <span v-else class="detail-value">***********</span>
+                </p>
               </div>
               <div class="detail-item full-width">
                 <span class="detail-label">描述</span>
@@ -534,5 +554,11 @@ const goBack = () => router.go(-1);
 
 .meta-item i {
   font-size: 16px;
+}
+.cursor-pointer {
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #409EFF;
+  padding-left: 0.1rem;
 }
 </style>

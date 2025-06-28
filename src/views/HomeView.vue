@@ -17,7 +17,7 @@ const models = ref<ModelConfigBase[]>([]);
 
 const currentPage = ref(1);
 const pageSize = ref(16);
-const totalPages = ref(1600);
+const totalPages = ref(1);
 const searchQuery = ref('');
 
 // 供应商选项
@@ -92,7 +92,7 @@ const handleSearch = async() => {
   models.value = models.value.filter(
     (model:ModelConfigBase) => {
       console.log(model.name);
-      return model.name.trim() === (searchQuery.value).trim()}
+      return model.name.trim().includes((searchQuery.value).trim())}
   );
 };
 

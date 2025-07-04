@@ -10,6 +10,14 @@ import { getConversations } from '../api/chat';
 import { getFormatTimeString } from '../utils/common';
 import { ElMessage } from 'element-plus';
 
+const typeMap = [
+  'api',
+  'ollama',
+  'base',
+  'finetuned',
+  'ollama_config'
+]
+
 const router = useRouter();
 
 // 筛选条件
@@ -17,6 +25,7 @@ const searchQuery = ref('');
 const selectedDateRange = ref('all');
 const selectedModel = ref(null);
 const detailVisible = ref(false);
+const activeTab = ref('api'); // 当前激活的tab
 const detailData = ref<Conversation>({
   id: 0,
   name: '',
@@ -25,27 +34,23 @@ const detailData = ref<Conversation>({
   chat_history: 10,
   create_at: '',
   update_at: '',
+  type: 0
 });
 
 // 模型列表
 const models = ref<ModelInfo[]>([]);
 
-// 历史对话数据 - 使用 HistoryItem 类型
+// 历史对话数据
 const histories = ref<Conversation[]>([]);
 
 // 过滤后的历史记录
 const filteredHistories = computed(() => {
-  const filtered = histories.value.filter(history => {
-    // 搜索过滤
-    // const matchesSearch = searchQuery.value === '' || 
-    //   history.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    
+  let filtered = histories.value.filter(history => {
     // 模型过滤
     const matchesModel = selectedModel.value === null || 
       history.model_config_id === models.value.find(m => m.id === selectedModel.value)?.id;
     
-    // 日期过滤（简化处理）
-    console.log(selectedDateRange.value)
+    // 日期过滤
     function is_match_date(date_str: string, range: string) {
       const date = new Date(date_str);
       const now = new Date();
@@ -55,32 +60,54 @@ const filteredHistories = computed(() => {
     }
     const matchesDate = selectedDateRange.value === 'all' || is_match_date(history.update_at, selectedDateRange.value);
     
-    // return matchesSearch && matchesModel && matchesDate;
     return matchesModel && matchesDate;
   });
+
+  // 按类型过滤
+  if (activeTab.value !== 'all') {
+    const typeKey = Object.keys(typeMap).find(key => typeMap[key as unknown as number] === activeTab.value);
+    if (typeKey) {
+      filtered = filtered.filter(history => history.type === parseInt(typeKey));
+    }
+  }
+
   return filtered.sort((a, b) => new Date(b.update_at).getTime() - new Date(a.update_at).getTime());
 });
+
 const modelName = ref('');
+
 // 显示详情弹窗
 const showDetail = async (history: Conversation) => {
   detailData.value = history;
   detailVisible.value = true;
-  const model_config = await getModelConfig(history.model_config_id)
+  const model_config = await getModelConfig(history.model_config_id, history.type)
   modelName.value = model_config.name;
 };
 
 // 继续对话
 const continueChat = async (history: Conversation) => {
-  const model_config = await getModelConfig(history.model_config_id)
+  const model_config = await getModelConfig(history.model_config_id, history.type)
   modelName.value = model_config.name;
-  router.push({
-    path: '/chat',
-    query: {
-      conversation_id: history.id,
-      config_name: modelName.value,
-      model_config_id: history.model_config_id
-    }
-  });
+  if (typeMap[history.type] !== 'api'){
+      router.push({
+        path: '/chatBase',
+        query: {
+          conversation_id: history.id,
+          config_name: modelName.value,
+          model_config_id: history.model_config_id,
+          model_type: typeMap[history.type]
+        }
+      })
+  }else{
+    router.push({
+      path: '/chat',
+      query: {
+        conversation_id: history.id,
+        config_name: modelName.value,
+        model_config_id: history.model_config_id
+      }
+    });
+  }
 };
 
 const startChat = async () => { 
@@ -108,154 +135,127 @@ onMounted(async() => {
   models.value = await getModelInfos();
   histories.value = await getConversations();
   
-  // 修复：遍历每个对话历史，对其消息数组排序
+  // 对消息按时间排序
   histories.value.forEach(history => {
     history.messages.sort((a, b) => {
       return new Date(a.create_at).getTime() - new Date(b.create_at).getTime();
     });
   });
-  
-  console.log('sorted histories', histories.value);
 });
-
 </script>
 
 <template>
   <div class="page-container"> 
     <div class="history-container">
-        <h2>对话历史</h2>
-        <p class="subtitle">查看和管理您的历史对话记录</p>
+      <h2>对话历史</h2>
+      <p class="subtitle">查看和管理您的历史对话记录</p>
 
-        <!-- 筛选区域 -->
-        <div class="filter-section">
-        <!-- <div class="filter-group">
-            <el-input
-            v-model="searchQuery"
-            placeholder="搜索对话历史..."
-            clearable
-            class="search-input"
-            >
-            <template #prefix>
-                <el-icon><search /></el-icon>
-            </template>
-            </el-input>
-        </div> -->
-        
+      <!-- 类型标签页 -->
+      <el-tabs v-model="activeTab" class="type-tabs">
+        <el-tab-pane v-for="(value, key) in typeMap" :key="key" :label="value" :name="value"></el-tab-pane>
+      </el-tabs>
+
+      <!-- 筛选区域 -->
+      <div class="filter-section">
         <div class="filter-group">
-            <el-select v-model="selectedDateRange" placeholder="时间范围" clearable>
+          <el-select v-model="selectedDateRange" placeholder="时间范围" clearable>
             <el-option label="今天" value="0"></el-option>
             <el-option label="最近7天" value="7"></el-option>
             <el-option label="最近30天" value="30"></el-option>
             <el-option label="全部" value="all"></el-option>
-            </el-select>
+          </el-select>
         </div>
 
-        <div class="filter-group">
+        <div class="filter-group" v-if="activeTab === 'api'">
           <el-input
-          v-model="searchQuery"
-          placeholder="请输入ShareId..."
-          clearable
-          class="search-input"
+            v-model="searchQuery"
+            placeholder="请输入ShareId..."
+            clearable
+            class="search-input"
           >
-          <template #prefix>
+            <template #prefix>
               <el-icon><search /></el-icon>
-          </template>
+            </template>
           </el-input>
           <el-button type="primary" @click="startChat">开启对话</el-button>
         </div>
-        
-        <!-- <div class="filter-group">
-            <el-select v-model="selectedModel" placeholder="模型筛选" clearable>
-            <el-option 
-                v-for="model in models" 
-                :key="model.id" 
-                :label="model.model_name" 
-                :value="model.id"
-            ></el-option>
-            </el-select>
-        </div> -->
-        </div>
+      </div>
 
-        <!-- 历史对话卡片 -->
-        <div class="history-list">
+      <!-- 历史对话卡片 -->
+      <div class="history-list">
         <div 
-            v-for="(history, index) in filteredHistories" 
-            :key="index" 
-            class="history-card"
+          v-for="(history, index) in filteredHistories" 
+          :key="index" 
+          class="history-card"
         >
-            <div class="card-header" >
+          <div class="card-header" >
             <h4>{{ history.name }}</h4>
-            
+            <span class="card-type">{{ typeMap[history.type] }}</span>
             <span class="card-date"><el-icon><clock /></el-icon>{{ getFormatTimeString(history.update_at) }}</span>
-            </div>
-            <div class="card-footer">
+          </div>
+          <div class="card-footer">
             <div class="message-count">
-                <el-icon><chat-dot-round /></el-icon>
-                {{ history.messages.length>=10?'10+' : history.messages.length }} 条消息
+              <el-icon><chat-dot-round /></el-icon>
+              {{ history.messages.length>=10?'10+' : history.messages.length }} 条消息
             </div>
             <div class="card-actions">
-                <el-button 
+              <el-button 
                 type="info" 
                 size="small" 
                 plain 
                 @click="showDetail(history)"
-                >
+              >
                 详情
-                </el-button>
-                <el-button 
+              </el-button>
+              <el-button 
                 type="primary" 
                 size="small" 
                 @click="continueChat(history)"
-                >
+              >
                 继续对话
-                </el-button>
+              </el-button>
             </div>
-            </div>
+          </div>
         </div>
-        </div>
+      </div>
 
-        <!-- 详情弹窗 -->
-        <el-dialog 
+      <!-- 详情弹窗 -->
+      <el-dialog 
         v-model="detailVisible" 
         :title="detailData.name" 
         width="60%" 
         custom-class="history-detail-dialog"
-        >
+      >
         <div class="detail-header">
-            <!-- <div class="detail-title">{{ detailData.name }}</div>/ -->
-            <div class="detail-meta">
+          <div class="detail-meta">
             <div class="meta-item">
-                <el-icon><clock /></el-icon>
-                <span>{{ getFormatTimeString(detailData.update_at) }}</span>
-            </div>
-            <div class="meta-item">
-                <!-- <el-icon><cpu /></el-icon> -->
-                <span>{{ models.find((item)=>{return item.id===detailData.model_config_id})?.model_name }}</span>
+              <el-icon><clock /></el-icon>
+              <span>{{ getFormatTimeString(detailData.update_at) }}</span>
             </div>
             <div class="meta-item">
-                <el-icon><chat-dot-round /></el-icon>
-                <span>{{ detailData.messages.length>=10?'10+':detailData.messages.length }} 条消息</span>
+              <el-icon><chat-dot-round /></el-icon>
+              <span>{{ detailData.messages.length>=10?'10+':detailData.messages.length }} 条消息</span>
             </div>
-            </div>
-            <div class="detail-content"> 
-                <div 
-                v-for="message in detailData.messages" 
-                :key="message.create_at" 
-                class="message" 
-                :class="{ 'user-message': message.role==='user', 'ai-message': message.role==='assistant' }"
-                >{{ message.content.slice(0,50) }}</div>
-            </div>
+          </div>
+          <div class="detail-content"> 
+            <div 
+              v-for="message in detailData.messages" 
+              :key="message.create_at" 
+              class="message" 
+              :class="{ 'user-message': message.role==='user', 'ai-message': message.role==='assistant' }"
+            >{{ message.content.slice(0,50) }}</div>
+          </div>
         </div>
         <template #footer>
           <div class="footer-section">
-            <span class="model-name" >{{ modelName }}</span>
+            <span class="model-name">{{ modelName }}</span>
             <div>
-            <el-button @click="detailVisible = false">关闭</el-button>
-            <el-button type="primary" @click="continueChat(detailData)">继续对话</el-button>
+              <el-button @click="detailVisible = false">关闭</el-button>
+              <el-button type="primary" @click="continueChat(detailData)">继续对话</el-button>
             </div>
           </div>
         </template>
-        </el-dialog>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -265,42 +265,31 @@ onMounted(async() => {
   flex: 1;
   padding-bottom: 4rem;
 }
+
+.type-tabs {
+  margin-bottom: 20px;
+}
+
 .history-header {
   text-align: center;
   margin-bottom: 40px;
-}
-
-.history-header h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1a1d2b;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #3a6eff 0%, #5b8cff 100%);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
 }
 
 .filter-section {
   display: flex;
   margin-bottom: 30px;
   flex-wrap: nowrap;
-  /* background: white; */
-  /* padding: 20px;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); */
   flex-direction: row;
   justify-content: space-between;
 }
 
 .filter-group {
-width: 25%;
-    padding: 20px;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    display: flex
-;
-    gap: 1rem;
+  width: 25%;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  gap: 1rem;
 }
 
 .search-input {
@@ -308,10 +297,10 @@ width: 25%;
 }
 
 .history-list {
-    display: flex;
-    gap: 25px;
-    margin-top: 20px;
-    flex-direction: column;
+  display: flex;
+  gap: 25px;
+  margin-top: 20px;
+  flex-direction: column;
 }
 
 .history-card {
@@ -341,6 +330,14 @@ width: 25%;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+}
+
+.card-type {
+  color: #666;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
 }
 
 .card-date {
@@ -378,13 +375,6 @@ width: 25%;
   padding-bottom: 20px;
   margin-bottom: 20px;
   border-bottom: 1px solid #ebeef5;
-}
-
-.detail-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1a1d2b;
-  margin-bottom: 15px;
 }
 
 .detail-meta {
@@ -426,13 +416,6 @@ width: 25%;
 .ai-message { 
   background: #fafafa;
   text-align: start;
-}
-.message:last-child { 
-  margin-bottom: 0;
-}
-
-.message:not(:last-child) { 
-  animation: fadeIn 0.5s ease-in-out;
 }
 
 .footer-section { 

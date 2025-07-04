@@ -2,18 +2,17 @@
 import { ElAvatar, ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import { RouterLink } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { useThemeStore } from '../stores/theme' // 引入主题store
+import { useThemeStore } from '../stores/theme'
 import router from '../router';
 
 const userStore = useUserStore()
-const themeStore = useThemeStore() // 使用主题store
+const themeStore = useThemeStore()
 
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
 }
 
-// 切换主题
 const changeTheme = (themeId: string) => {
   themeStore.setTheme(themeId)
 }
@@ -28,7 +27,7 @@ const changeTheme = (themeId: string) => {
       <h2>ModelHub</h2>
     </div>
     <ul class="navbar-menu">
-      <li>
+      <!-- <li>
         <RouterLink to="/">首页</RouterLink>
       </li>
       <li>
@@ -39,7 +38,7 @@ const changeTheme = (themeId: string) => {
       </li>
       <li>
         <RouterLink to="/user">个人中心</RouterLink>
-      </li>
+      </li> -->
       <div class="navbar-right">
         <template v-if="userStore.isAuthenticated">
           <ElDropdown>
@@ -62,7 +61,7 @@ const changeTheme = (themeId: string) => {
                   <span class="dropdown-item-text">服务协议</span>
                   <span class="dropdown-item-icon">📄</span>
                 </ElDropdownItem>
-                <!-- 添加主题切换菜单 -->
+                <!-- 主题切换菜单 -->
                 <ElDropdownItem divided>
                   <div class="theme-selector">
                     <span class="theme-label">主题颜色</span>
@@ -100,9 +99,10 @@ const changeTheme = (themeId: string) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  margin: 0 2rem;
-  align-items: center;
+  padding: 0.8rem 2rem;
+  height: 100%; /* 填满父容器高度 */
+  /* max-width: 1600px; */
+  margin: 0 auto;
 }
 
 .navbar-brand { 
@@ -145,7 +145,7 @@ const changeTheme = (themeId: string) => {
 }
 
 .navbar-right {
-  /* margin-left: 1.5rem; */
+  z-index: 1100; /* 高于导航栏 */
 }
 
 .avatar-dropdown{
@@ -193,7 +193,6 @@ const changeTheme = (themeId: string) => {
   border-top: 1px solid #f0f0f0;
 }
 
-/* 新增登录注册按钮样式 */
 .auth-buttons {
   display: flex;
   gap: 12px;
@@ -217,20 +216,7 @@ const changeTheme = (themeId: string) => {
 .login-button:hover {
   background-color: #ecf5ff;
 }
-/* 当导航栏背景为白色时，调整链接颜色 */
-.sticky-header.scrolled .navbar-menu a {
-  color: #2c3e50;
-}
 
-.sticky-header.scrolled .navbar-menu a.router-link-exact-active {
-  color: #4277b9;
-}
-
-/* 确保logo在白色背景下仍然可见 */
-.sticky-header.scrolled .logo-link {
-  color: #2c3e50;
-}
-/* 主题选择器样式 */
 .theme-selector {
   display: flex;
   flex-direction: column;

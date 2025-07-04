@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Setting, DataBoard } from '@element-plus/icons-vue';
+import { Setting, DataBoard, Cpu, Collection } from '@element-plus/icons-vue';
 
 // 工作台卡片数据
 const workspaces = ref([
@@ -19,7 +19,23 @@ const workspaces = ref([
     icon: DataBoard,
     bgColor: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)',
     route: '/database'
-  }
+  },
+  {
+    id: 3,
+    title: '微调管理',
+    description: '管理您的微调模型',
+    icon: Cpu,
+    bgColor: 'linear-gradient(135deg, #d299c2 0%, #f38181 100%)',
+    route: '/model'
+  },
+  {
+    id: 4, // 唯一ID
+    title: '模型管理',
+    description: '管理您的本地模型',
+    icon: Collection, // 不同图标
+    bgColor: 'linear-gradient(135deg, rgb(186 146 230) 0%, rgb(37, 117, 252) 100%)', // 不同背景
+    route: '/local-model'
+  },
 ]);
 
 </script>
@@ -50,10 +66,11 @@ const workspaces = ref([
 
 <style scoped>
 .workspace {
-  display: flex;
-  gap: 50px;
-  flex-direction: row;
-  justify-content: center;
+    display: flex;
+    gap: 50px;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 .workspace-card {
   display: block;

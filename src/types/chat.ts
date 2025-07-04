@@ -10,6 +10,7 @@ export class Conversation {
   model_config_id!: number;
   create_at!: string;
   update_at!: string;
+  type!: number;
   messages!: ChatMessage[];
   last_message?: ChatMessage;
 }

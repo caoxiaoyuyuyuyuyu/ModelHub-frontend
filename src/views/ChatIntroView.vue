@@ -8,6 +8,7 @@ import { getModelConfig } from '../api/model';
 import { useUserStore } from '../stores/user';
 import { getCurrentStatus } from '../utils/common';
 import { chat } from '../api/chat';
+import { getFineTunedModelConfig } from '../api/fintuning';
 
 const route = useRoute();
 const router = useRouter();
@@ -16,6 +17,7 @@ const userStore = useUserStore();
 // 获取路由参数
 const configName = ref(route.query.config_name as string || '');
 const modelConfigId = ref(route.query.model_config_id as string || '');
+const model_type = ref(route.query.model_type as string || 'api');
 const currentTime = ref('');
 
 
@@ -35,8 +37,56 @@ const sendMessage = async () => {
     const formData = new FormData();
     formData.append('message', content);
     formData.append('model_config_id', modelConfigId.value);
+    formData.append('model_type', model_type.value);
     // 调用发送消息API
+    console.log('model_type.value:', model_type.value);
     const response = await chat(formData);
+    if (response ){
+      if(model_type.value === 'finetuned'){
+        console.log('响应数据:', response);
+        router.push({
+          path: '/chatBase',
+          query: {
+            model_config_id: modelConfigId.value,
+            model_type: model_type.value,
+            history: JSON.stringify([
+              {
+                content: content,
+                role: 'user'
+              },
+              {
+                content: response.content,
+                role: 'assistant'
+              }
+            ])
+          }
+        })
+        return;
+      }
+      else if (model_type.value != 'api')  {
+      console.log('响应数据:', response);
+       router.push({
+          path: '/chatBase',
+          query: {
+            model_config_id: modelConfigId.value,
+            model_type: model_type.value,
+            history: JSON.stringify([
+              {
+                content: content,
+                role: 'user'
+              },
+              {
+                content: response.content,
+                role: 'assistant'
+              }
+            ])
+          }
+        })
+        return;
+      }
+    }else{
+      return;
+    }
     
     // 成功获取会话ID后跳转到聊天页面
     if (response.conversation_id) {
@@ -45,14 +95,16 @@ const sendMessage = async () => {
         query: { 
           conversation_id: response.conversation_id,
           config_name: configName.value,
-          model_config_id: modelConfigId.value
+          model_config_id: modelConfigId.value,
+          model_type: model_type.value
         }
       });
     } else {
-      throw new Error('未获取到会话ID');
+      // throw new Error('未获取到会话ID');
     }
   } catch (error) {
     // 处理错误情况
+    console.error(error);
     ElMessage.error('消息发送失败，请重试');
     isLoading.value = false; // 重置加载状态
   }
@@ -61,7 +113,14 @@ const sendMessage = async () => {
 
 const loadDate = async () => { 
   if (!configName.value){
-    configName.value = await getModelConfig(Number(modelConfigId.value));
+    if(model_type.value == 'api'){
+      const response = await getModelConfig(Number(modelConfigId.value));
+      configName.value = response.name;
+    }
+    else if(model_type.value == 'finetuned'){
+      const response = await getFineTunedModelConfig(Number(modelConfigId.value))
+      configName.value = response.name;
+    }
   }
   // 上午还是下午还是晚上
   currentTime.value = getCurrentStatus();

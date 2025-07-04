@@ -11,6 +11,11 @@ import ChatHistoryView from '../views/ChatHistoryView.vue';
 import ChatIntroView from '../views/ChatIntroView.vue';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
+import FineTunningView from '../views/FineTunningView.vue';
+import FineTuneDetailView from '../views/FineTuneDetailView.vue'
+import ChatFinetunedView from '../views/ChatFinetunedView.vue'
+import LocalModelView from '../views/LocalModelView.vue'
+
 import { useUserStore } from '../stores/user'
 
 const router = createRouter({
@@ -59,6 +64,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/chatFinetuned',
+      name: 'chatFinetuned',
+      component: ChatFinetunedView,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/intro',
       name: 'intro',
       component: ChatIntroView,
@@ -86,6 +97,35 @@ const router = createRouter({
       path: '/config/:id',
       name: 'configDetail',
       component: ModelConfigDetail,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/model',
+      name: 'model',
+      component: FineTunningView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/fine-tune/create',
+      name: 'FineTuneCreate',
+      component: () => import('../views/FineTuneCreateView.vue')
+    },
+    {
+      path: '/fine-tune/:id',
+      name: 'FineTuneDetail',
+      component: FineTuneDetailView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/local-model',
+      name: 'LocalModel',
+      component: LocalModelView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: "/chatBase",
+      name: 'ChatBase',
+      component: () => import('../views/ChatBaseView.vue'),
       meta: { requiresAuth: true }
     }
   ],

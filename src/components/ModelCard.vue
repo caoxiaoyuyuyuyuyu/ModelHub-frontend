@@ -61,10 +61,8 @@ const handleExperience = () => {
   border-radius: 8px;
   padding: 1.5rem;
   transition: all 0.3s;
-  /* height: 100%; */
   display: flex;
   flex-direction: column;
-  /* background-color: #fff; */
   justify-content: space-between;
   padding-bottom: 0.5rem;
   background: radial-gradient(26% 84% at 4% 4%, rgba(216, 219, 231, 0.3) 0%, rgba(232, 236, 242, 0) 94%), #fff;

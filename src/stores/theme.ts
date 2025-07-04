@@ -42,6 +42,30 @@ export const useThemeStore = defineStore('theme', {
           radial-gradient(circle at 30% 70%, #d299c2, transparent 80%),
           radial-gradient(circle at 70% 30%, #fef6d4, transparent 80%)
         `
+      },
+      {
+        id: 'pure-white',
+        name: '纯白主题',
+        background: '#ffffff',  // 白色
+        type: 'color' // 添加类型标识
+      },
+      {
+        id: 'pure-black',
+        name: '纯黑主题',
+        background: '#000000',  // 黑色
+        type: 'color' // 添加类型标识
+      },
+      {
+        id: 'sky-blue',
+        name: '天蓝主题',
+        background: '#87CEEB',  // 天蓝色
+        type: 'color' // 添加类型标识
+      },
+      {
+        id: 'forest-green',
+        name: '森林绿主题',
+        background: '#b6eab6',  // 森林绿
+        type: 'color' // 添加类型标识
       }
     ] as Theme[],
     // 当前选中的主题ID

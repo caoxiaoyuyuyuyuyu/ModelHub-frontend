@@ -24,6 +24,33 @@ export const getMessages = async (formDate: FormData) => {
 }
 
 export const chat = async (formDate: FormData) => { 
+    if(formDate.get('model_type') === 'finetuned'){
+      const response = await api.post('/finetuning/chat', formDate)
+      return {...response.data.data.response,
+        create_at: getCurrentTime(),
+      }
+    } 
+    if(formDate.get('model_type') === 'base'){
+      console.log("base",formDate)
+      const response = await api.post('/finetuning/base/chat', formDate)
+      return {...response.data.data.response,
+        create_at: getCurrentTime(),
+      }
+    }
+    if(formDate.get('model_type') === 'ollama'){
+      const response = await api.post('/ollama/chat', formDate)
+      console.log("ollama",response.data)
+      return {...response.data.data.response,
+        create_at: getCurrentTime(),
+      }
+    }
+    if(formDate.get('model_type') === 'ollama_config'){
+      const response = await api.post('/ollama/config/chat', formDate)
+      console.log("ollama_config",response.data)
+      return {...response.data.data.response,
+        create_at: getCurrentTime(),
+      }
+    }
     const response = await api.post('/chat/', formDate, { headers: { 'Content-Type': 'multipart/form-data' } })
     return {...response.data.data.response,
       create_at: getCurrentTime(),

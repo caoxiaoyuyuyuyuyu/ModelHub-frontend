@@ -1,14 +1,13 @@
 <!-- src/views/ChatView.vue -->
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { ElDrawer, ElButton, ElInput, ElIcon } from 'element-plus';
-import { Fold, Expand, Promotion } from '@element-plus/icons-vue';
-import type { Conversation, ChatMessage } from '../types/chat';
-import { getConversations, getMessages, chat, rechat, setChatHistory } from '../api/chat';
+import { useRoute } from 'vue-router';
+import { ElInput, ElIcon } from 'element-plus';
+import { Promotion } from '@element-plus/icons-vue';
+import type { ChatMessage } from '../types/chat';
+import { chat } from '../api/chat';
 import { getCurrentTime } from '../utils/common';
-import { getModelConfig } from '../api/model';
-import { Refresh } from '@element-plus/icons-vue';
+import { getFineTunedModelConfig } from '../api/fintuning';
 
 // 引入Markdown解析库和代码高亮库
 import { marked } from 'marked';
@@ -33,19 +32,11 @@ marked.setOptions({
   gfm: true
 });
 const route = useRoute();
-const router = useRouter();
 
 // 获取路由参数
 const configName = ref(route.query.config_name as string || '');
 const modelConfigId = ref(route.query.model_config_id as string || '');
-const conversationId = ref(route.query.conversation_id as string || '');
-
-// 控制抽屉显示/隐藏
-const drawerVisible = ref(false);
-const drawerWidth = ref(400);
-
-// 对话历史列表（模拟数据）
-const chatHistory = ref<Conversation[]>([]);
+const History = ref(route.query.history as string || '');
 
 // 当前对话的消息列表
 const messages = ref<ChatMessage[]>([]);
@@ -64,6 +55,11 @@ const sendMessage = async (query: string) => {
     role: 'user',
     create_at: getCurrentTime(),
   });
+  // 创建请求参数
+  const formData = new FormData();
+  formData.append('message', String(messages.value));
+  formData.append('model_config_id', modelConfigId.value);
+  formData.append('model_type', 'finetuned');
   messages.value.push({
     content: '正在思考。。。',
     role: 'assistant',
@@ -73,11 +69,7 @@ const sendMessage = async (query: string) => {
   // 滚动到底部
   scrollToBottom();
   
-  // 创建请求参数
-  const formData = new FormData();
-  formData.append('conversation_id', conversationId.value);
-  formData.append('message', query);
-  formData.append('model_config_id', modelConfigId.value);
+
 
   // 清空输入框
   // const userInputBack = query;
@@ -106,141 +98,20 @@ const sendMessage = async (query: string) => {
   }
   
 };
-const handleRegenerate = async (index: number) => {
-  const reg_content = messages.value[index].content;
-  // console.log('reg_content:', reg_content);
-  if (reg_content === '正在思考。。。') {
-    console.log('正在思考。。。');
-    return;
-  }
-  if (reg_content === '请求失败，请稍后再试') {
-    console.log('请求失败，请稍后再试');
-    messages.value.pop()
-    const last_query = messages.value[index - 1].content;
-    messages.value.pop()
-    console.log('last_query:', last_query);
-    await sendMessage(last_query);
-    return;
-  }
-  const formData = new FormData();
-  formData.append('conversation_id', conversationId.value);
-  try {
-    const response = await rechat(formData);
-    console.log('响应数据:', response);
-  }catch (error) {
-    console.error('请求失败:', error);
-  }
-};
 
 const renderMarkdown = (content: string) => {
   return marked.parse(content);
 };
-// 切换抽屉显示
-const toggleDrawer = () => {
-  drawerVisible.value = !drawerVisible.value;
-};
 
-const hanleChangeConversation = async (id: number, model_config_id: number, type: number) => { 
-  // 更新当前对话ID和模型配置ID
-  conversationId.value = id.toString();
-  modelConfigId.value = model_config_id.toString();
-  if (type === 1 || type === 2) { 
-    configName.value = await getModelConfig(model_config_id, type);
-    router.push({
-      path: '/chatBase',
-      query: {
-        conversation_id: conversationId.value,
-        // config_name: configName.value,
-        model_config_id: modelConfigId.value,
-        model_type: type
-      }
-    })
-  }
-  try {
-    // 重置模型配置名称，确保重新加载
-    configName.value = "";
-    
-    // 创建请求参数
-    const formData = new FormData();
-    formData.append('conversation_id', id.toString());
-    
-    // 获取新对话的消息
-    const conversaton = (await getMessages(formData));
-    ConversationInfo.value = conversaton.conversation_info;
-    const ori_messages = conversaton.history;
-
-    
-    // 按时间排序消息
-    messages.value = ori_messages.messages.sort(
-      (a: ChatMessage, b: ChatMessage) => 
-        new Date(a.create_at).getTime() - new Date(b.create_at).getTime()
-    );
-    
-    // 加载模型配置名称（如果尚未加载）
-    if (!configName.value) {
-      configName.value = (await getModelConfig(model_config_id)).name;
-    }
-    
-    // 滚动到底部
-    nextTick(() => {
-      scrollToBottom();
-    });
-    
-  } catch (error) {
-    console.error('切换对话失败:', error);
-    // 失败时显示错误信息
-    messages.value = [{
-      role: 'system',
-      content: '对话加载失败，请重试',
-      create_at: getCurrentTime(),
-    }];
-  }
-};
-const hanleNewConversation = async () => {
-  router.push({
-    path: '/intro',
-    query: {
-      config_name: configName.value,
-      model_config_id: modelConfigId.value
-    }
-  });
-};
-
-const ConversationInfo = ref<Conversation>({
-  id: 0,
-  name: '',
-  model_config_id: 0,
-  messages: [],
-  chat_history: 10,
-  create_at: '',
-  type: 0,
-  update_at: ''
-});
 const loadDate = async () => { 
   if (!configName.value){
-    configName.value = await getModelConfig(Number(modelConfigId.value));
+      const response = await getFineTunedModelConfig(Number(modelConfigId.value))
+      configName.value = response.name;
   }
   scrollToBottom();
-  chatHistory.value = await getConversations();
-  if (conversationId.value) {
-    const formData = new FormData();
-    formData.append('conversation_id', conversationId.value);
-    const conversaton = (await getMessages(formData));
-    ConversationInfo.value = conversaton.conversation_info;
-    const ori_messages = conversaton.history;
-    messages.value = ori_messages.messages.sort((a: ChatMessage, b: ChatMessage) => new Date(a.create_at).getTime() - new Date(b.create_at).getTime());
-  }else{
-    messages.value = [{
-      role: 'system',
-      content: '请开始你的对话',
-      create_at: getCurrentTime(),
-    }];
+  if (History.value) { 
+    messages.value = JSON.parse(History.value)
   }
-};
-const handleChatHistoryChange = (e: any) => { 
-  setChatHistory( conversationId.value,e.target.value).then(() => {
-    ConversationInfo.value.chat_history = e.target.value;
-  });
 };
 
 // 页面加载时，根据modelConfigId加载模型配置
@@ -261,44 +132,16 @@ const scrollToBottom = () => {
 
 <template>
   <div class="chat-header">
-    <ElButton @click="toggleDrawer" size="large" :icon="drawerVisible ? Fold : Expand" circle class="toggle-btn" />
-    <h4>{{ ConversationInfo?.name }}</h4>
     <div class="model-info">{{ configName }} 提供服务</div>
   </div>
   <div class="chat-container">
-    <!-- 左侧抽屉：对话历史 -->
-    <ElDrawer
-      v-model="drawerVisible"
-      title="对话历史"
-      direction="ltr"
-      :with-header="true"
-      :size="drawerWidth"
-      :show-close="false"
-    >
-      <div class="history-list">
-        <div 
-          v-for="item in chatHistory" 
-          :key="item.id" 
-          class="history-item"
-          :class="{ active: item.id == Number(conversationId) }"
-          @click="hanleChangeConversation(item.id,item.model_config_id, item.type)"
-        >
-          <div class="history-title">{{ item.name }}</div>
-          <div class="history-preview">{{ item.last_message }}</div>
-          <div class="history-time">{{ item.create_at }}</div>
-        </div>
-      </div>
-      <div class="new-chat-btn">
-        <ElButton type="primary" size="large" plain @click="hanleNewConversation()">新建对话</ElButton>
-      </div>
-    </ElDrawer>
     <!-- 主聊天区域 -->
     <div class="chat-main">
 
       <!-- 消息区域 -->
       <div ref="messageAreaRef" class="message-area">
         <div 
-          v-for="(message,index) in messages" 
+          v-for="(message) in messages" 
           :key="message.create_at" 
           class="message" 
           :class="{ 'user-message': message.role=='user', 'ai-message': message.role=='assistant' }"
@@ -311,16 +154,7 @@ const scrollToBottom = () => {
               class="message-text markdown-body" 
               v-html="renderMarkdown(message.content)"
             ></div>
-            <!-- <div class="message-text">{{ message.content }}</div> -->
             <div class="message-time">{{ message.create_at }}</div>
-          <!-- 添加重新生成按钮 -->
-          <div class="regenerate-action" v-if="message.role === 'assistant'">
-            <el-tooltip content="重新生成回复" placement="top">
-              <el-icon class="regenerate-icon" @click="handleRegenerate(index)">
-                <Refresh />
-              </el-icon>
-            </el-tooltip>
-          </div>
           </div>
         </div>
       </div>
@@ -339,19 +173,6 @@ const scrollToBottom = () => {
             class="message-input"
           />
           <div class="input-info-box">
-            <div class="context-length-container">
-              <label>上下文参考长度：</label>
-              <input
-                type="number"
-                @change="handleChatHistoryChange"
-                v-model="ConversationInfo.chat_history"
-                :min="1"
-                :max="10"
-                class="context-length-input"
-                step="1"
-                style="appearance: auto;"
-              />
-            </div>
             <div class="input-actions" @click="sendMessage(userInput)"
             :style="{
               background: hasInput 
@@ -396,9 +217,8 @@ const scrollToBottom = () => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   flex-direction: column;
   width: 60px; /* 固定宽度 */
-  right: 25px;
-  top: 80px;
-  height: calc(100vh - 120px);
+  left: 0;
+  height: calc(100vh - 195px); 
   position: fixed;
 }
 
@@ -488,6 +308,7 @@ const scrollToBottom = () => {
   word-break: break-word;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
+  background-color: #fff;
 }
 
 /* .message-text::after {
@@ -651,7 +472,7 @@ const scrollToBottom = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-direction: row;
+  flex-direction: row-reverse;
   flex-wrap: nowrap;
   flex: 1;
   width: 100%; 

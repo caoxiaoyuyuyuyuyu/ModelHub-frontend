@@ -8,7 +8,7 @@ import { getModelInfos } from '../api/model';
 import { fetchOwnVectors } from '../api/vectorDb';
 import { ModelConfig, ModelInfo } from '../types/model_config';
 import type { VectorDbBase } from '../types/vectorDb';
-import type { ElButton } from 'element-plus/lib';
+// import type { ElButton } from 'element-plus/lib';
 
 const route = useRoute();
 const configId = ref(Number(route.params.id));

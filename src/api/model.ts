@@ -15,7 +15,18 @@ export const getModelInfo = async (id: number) => {
     const response = await api.get(`/model/modelinfo/get/${id}`)
     return response.data.data
 }
-export const getModelConfig = async (id: number) => { 
+export const getModelConfig = async (id: number, type: number = 0) => { 
+    if (type === 1) {
+        const response = await api.get(`/ollama_model/modelinfo/get/${id}`)
+        return {
+            name: response.data.data.model_name
+        }
+    }else if (type === 2) {
+        const response = await api.get(`/finetuning/get-base/${id}`)
+        return {
+            name: response.data.data.name
+        }
+    }
     const response = await api.get(`/model/modelconfig/get/${id}`)
     return response.data.data
 }
@@ -51,5 +62,26 @@ export const deleteModelConfig = async (id: number) => {
 
 export const getModelConfigByShareId = async (share_id: string) => { 
     const response = await api.post(`/model/modelconfig/getshare`,{share_id:share_id})
+    return response.data.data
+}
+
+export const fetchOllamaModels = async () => { 
+    const response = await api.get('/ollama_model/modelinfo/getlist')
+    return response.data.data
+}
+
+export const updateOllamaModelConfig = async (id: number, formData:any) => {
+    const response = await api.post(`/ollama_model/modelconfig/update`, {
+        id: id,
+        ...formData})
+    return response.data.data
+} 
+
+export const deleteOllamaModelConfig = async (id: number) => { 
+    const response = await api.delete(`/ollama_model/modelconfig/delete/${id}`)
+    return response.data.data
+}
+export const createOllamaModelConfig = async (data: any) => { 
+    const response = await api.post(`/ollama_model/modelconfig/create`, data)
     return response.data.data
 }

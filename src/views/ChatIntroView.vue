@@ -107,6 +107,10 @@ const sendMessage = async () => {
     console.error(error);
     ElMessage.error('消息发送失败，请重试');
     isLoading.value = false; // 重置加载状态
+    if (model_type.value === 'finetuned'){
+      // 返回上一页
+      router.back();
+    }
   }
 };
 

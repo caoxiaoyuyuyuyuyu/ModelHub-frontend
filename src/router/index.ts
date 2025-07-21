@@ -15,6 +15,7 @@ import FineTunningView from '../views/FineTunningView.vue';
 import FineTuneDetailView from '../views/FineTuneDetailView.vue'
 import ChatFinetunedView from '../views/ChatFinetunedView.vue'
 import LocalModelView from '../views/LocalModelView.vue'
+import PermissionManageView from '../views/PermissionManageView.vue'
 
 import { useUserStore } from '../stores/user'
 
@@ -127,7 +128,13 @@ const router = createRouter({
       name: 'ChatBase',
       component: () => import('../views/ChatBaseView.vue'),
       meta: { requiresAuth: true }
-    }
+    },
+    {
+      path: '/permission',
+      name: 'Permission',
+      component: PermissionManageView,
+      meta: { requiresAuth: true }
+    },
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {

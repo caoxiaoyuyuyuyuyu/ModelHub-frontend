@@ -9,7 +9,6 @@ import { ElMessage } from 'element-plus';
 const router = useRouter();
 const baseModels = ref<BaseModel[]>([]);
 const loading = ref(false);
-// const fileList = ref<File[]>([]);
 
 // 表单数据
 const form = ref({
@@ -27,6 +26,7 @@ const form = ref({
   load_in_4bit: false,
   training_type: 'dialogue'
 });
+
 
 // 表单验证规则
 const formRules = {
@@ -47,12 +47,6 @@ const formRules = {
   ],
 };
 
-// 处理文件上传
-// const handleFileUpload = (file: any) => {
-//   fileList.value = [file.raw]; // 直接存储原始File对象
-//   return false;
-// };
-
 // 提交微调请求
 const submitFineTune = async () => {
   loading.value = true;
@@ -61,7 +55,7 @@ const submitFineTune = async () => {
       throw new Error('请填写必填字段');
     }
     
-    if (!uploadForm.value.file) {  // 检查单个文件
+    if (!uploadForm.value.file) {
       throw new Error('请上传训练文件');
     }
 
@@ -75,18 +69,17 @@ const submitFineTune = async () => {
     });
     
     // 添加单个文件
-    formData.append('file', uploadForm.value.file);  // 注意字段名改为单数 'file'
-    
-    for (let [key, value] of formData.entries()) {
-      console.log(key, value);
-    }
+    formData.append('file', uploadForm.value.file);
 
-    const result = await startFineTuning(formData);
-    console.log('微调结果:', result);
-    ElMessage.success('微调成功');
-    router.push(
-        { path: '/model' }
-    );
+    ElMessage.success('开始微调');
+    // 返回上一个页面
+    router.back();
+    
+    startFineTuning(formData).then((result) => { 
+      console.log('微调结果:', result);
+      ElMessage.success('微调任务完成');
+    });
+    
   } catch (error: any) {
     console.error('微调失败:', error);
     ElMessage.error(error.message || '微调失败');
@@ -94,6 +87,7 @@ const submitFineTune = async () => {
     loading.value = false;
   }
 };
+
 // 加载基础模型
 onMounted(async () => {
   loading.value = true;
@@ -125,7 +119,6 @@ const handleFileChange = (uploadFile: any) => {
       <h1><el-icon :size="28" style="vertical-align: middle; margin-right: 12px;"><Cpu /></el-icon>创建微调模型</h1>
       <p class="subtitle">配置参数并上传训练数据以创建新的微调模型</p>
     </div>
-    
     <div class="form-container">
       <el-form 
         :model="form" 
@@ -272,6 +265,10 @@ const handleFileChange = (uploadFile: any) => {
 </template>
 
 <style scoped>
+/* 添加进度条颜色 */
+:deep(.el-progress__text) {
+  font-size: 20px !important;
+}
 .create-container {
   max-width: 1200px;
   margin: 0 auto;

@@ -2,11 +2,14 @@
 import { ref, onMounted, nextTick, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Download, ArrowLeft, Cpu, ChatDotRound, View } from '@element-plus/icons-vue';
-import type { BaseModel, FineTuneRecord, FineTunedModel, FineTuneDocument } from '../types/model';
+import { type BaseModel, type FineTuneRecord, FineTunedModel, type FineTuneDocument } from '../types/model';
 import { fetchFineTunedModelById, getFineTuneLogs, downLoadLogs } from '../api/fintuning';
 import { ElMessage } from 'element-plus';
 import * as echarts from 'echarts';
+import { io, Socket } from 'socket.io-client';
+import { useProcessStore } from '../stores/finetuning';
 
+const processStore = useProcessStore();
 const route = useRoute();
 const router = useRouter();
 const modelId = ref(route.params.id as string);
@@ -18,6 +21,57 @@ const trainingLogs = ref<any[]>([]);
 const showLogChart = ref(false);
 const chartRef = ref<HTMLElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
+const socket = ref<Socket | null>(null);
+const trainingProgress = ref(0);
+const colors = [
+  { color: '#f56c6c', percentage: 20 },
+  { color: '#e6a23c', percentage: 40 },
+  { color: '#5cb87a', percentage: 60 },
+  { color: '#1989fa', percentage: 80 },
+  { color: '#6f7ad3', percentage: 100 }
+];
+// 初始化Socket.IO连接
+const initSocket = () => {
+  if (socket.value && socket.value.connected) {
+    return; // 已有连接则不再创建
+  }
+
+  const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+  socket.value = io(socketUrl, {
+    path: '/socket.io',
+    transports: ['websocket'],
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+  });
+
+  socket.value.on('connect', () => {
+    console.log('Socket connected');
+  });
+
+  socket.value.on('connect_error', (error) => {
+    console.error('Socket connection error:', error);
+    ElMessage.error('连接训练进度服务失败');
+  });
+
+  socket.value.on('disconnect', () => {
+    console.log('Socket disconnected');
+  });
+
+  socket.value.on('training_progress', (data) => {
+    console.log('Training progress:', data, fineTunedModel.value);
+    // if (data.model_id === Number(modelId.value)) {
+      trainingProgress.value = data.progress.toFixed(2);
+      if (fineTunedModel.value && trainingProgress.value >= 0){
+        console.log("to setProcess", fineTunedModel.value?.id ,data.progress)
+        processStore.setProcess(fineTunedModel.value?.id ,data.progress);}
+      if (data.progress >= 100) {
+        setTimeout(() => {
+          loadModelDetails(); // 刷新数据
+        }, 3000);
+      }
+    // }
+  });
+};
 
 const loading = ref(false);
 
@@ -29,6 +83,10 @@ const loadModelDetails = async () => {
         baseModel.value = fineTunedRecord.value.base_model;
         fineTunedModel.value = fineTunedRecord.value.fine_tuned_model;
         fineTuneDocument.value = fineTunedRecord.value.fine_tune_document;
+        // 如果模型正在训练中，显示进度对话框
+        if (fineTunedModel.value?.status === 'running') {
+          initSocket();
+        }
     }
   } catch (error) {
     ElMessage.error('加载模型详情失败');
@@ -37,6 +95,17 @@ const loadModelDetails = async () => {
     loading.value = false;
   }
 };
+
+// 组件卸载时断开Socket连接
+onUnmounted(() => {
+  if (socket.value) {
+    socket.value.disconnect();
+  }
+  if (chartInstance) {
+    chartInstance.dispose();
+    chartInstance = null;
+  }
+});
 
 const handleDownloadLogs = async () => {
   try {
@@ -235,6 +304,12 @@ onUnmounted(() => {
     chartInstance.dispose();
     chartInstance = null;
   }
+  if(fineTunedModel.value?.status === 'running'){
+    const process = processStore.currentProcess(fineTunedModel.value.id)
+    if (process) {
+      trainingProgress.value = process.process
+    }
+  }
 });
 
 // Navigate to chat interface
@@ -267,12 +342,32 @@ onMounted(() => {
         <div class="model-header">
           <h2>{{ fineTunedModel.name }}</h2>
           <el-tag :type="fineTunedModel.status === 'completed' ? 'success' : 
-                         fineTunedModel.status === 'training' ? 'primary' : 'danger'" size="large">
+                         fineTunedModel.status === 'running' ? 'primary' : 'danger'" size="large">
             {{ fineTunedModel.status === 'completed' ? '已完成' : 
-               fineTunedModel.status === 'training' ? '训练中' : '失败' }}
+               fineTunedModel.status === 'running' ? '训练中' : '失败' }}
           </el-tag>
         </div>
         
+        <!-- 训练进度条 -->
+        <div class="progress-section" v-if="fineTunedModel.status === 'running'">
+          <div class="progress-header">
+            <span>训练进度</span>
+            <span>{{ trainingProgress }}%</span>
+          </div>
+          <el-progress 
+            :percentage="trainingProgress" 
+            :color="colors"
+            :stroke-width="16"
+            :text-inside="false"
+          />
+          <p class="progress-hint" v-if="trainingProgress < 100">
+            模型训练中，请稍候...
+          </p>
+          <p class="progress-hint" v-else>
+            训练完成！
+          </p>
+        </div>
+
         <p class="model-description">{{ fineTunedModel.describe || '暂无描述' }}</p>
         
         <div class="model-meta">
@@ -365,6 +460,43 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 新增进度条样式 */
+.progress-section {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.progress-hint {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+.model-description {
+  color: #606266;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.model-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
 .detail-container {
   width: 80%;
   margin: 0 auto;

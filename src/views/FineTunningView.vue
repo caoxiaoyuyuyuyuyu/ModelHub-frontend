@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Search, Plus, Refresh, Cpu } from '@element-plus/icons-vue';
+import { Plus, Refresh, Cpu } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 import type { FineTunedModel, BaseModel } from '../types/model';
 import { fetchFineTunedModels, fetchBaseModels } from '../api/fintuning';
@@ -9,7 +9,6 @@ const router = useRouter();
 const baseModels = ref<BaseModel[]>([]);
 const fineTunedModels = ref<FineTunedModel[]>([]);
 const loading = ref(false);
-const searchQuery = ref('');
 
 // 加载数据
 const loadData = async () => {
@@ -90,7 +89,7 @@ onMounted(async () => {
               <h3>{{ model.name }}</h3>
             </div>
             <ElTag size="large">
-            {{ model.status === 'completed' ? '已完成' : model.status === 'training' ? '训练中' : '失败' }}
+            {{ model.status === 'completed' ? '已完成' : model.status === 'running' ? '训练中' : '失败' }}
             </ElTag>
           </div>
           

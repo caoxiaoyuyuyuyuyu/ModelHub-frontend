@@ -18,7 +18,13 @@ import LocalModelView from '../views/LocalModelView.vue'
 import PermissionManageView from '../views/PermissionManageView.vue'
 
 import { useUserStore } from '../stores/user'
-
+import { ElMessage } from 'element-plus'
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    requiresPermission?: string  // 明确定义类型
+  }
+}
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -44,19 +50,25 @@ const router = createRouter({
       path: '/config',
       name: 'config',
       component: ConfigView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'config'
+       }
     },
     {
       path: '/database',
       name: 'database',
       component: VectorDbView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'database'
+       }
     },
     {
       path: '/database/:id',
       name: 'databaseDetail',
       component: VectorDbDetail,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'database'
+       }
     },
     {
       path: '/chat',
@@ -98,31 +110,41 @@ const router = createRouter({
       path: '/config/:id',
       name: 'configDetail',
       component: ModelConfigDetail,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'config'
+       }
     },
     {
       path: '/model',
       name: 'model',
       component: FineTunningView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'model'
+       }
     },
     {
       path: '/fine-tune/create',
       name: 'FineTuneCreate',
-      component: () => import('../views/FineTuneCreateView.vue')
+      component: () => import('../views/FineTuneCreateView.vue'),
+      meta: { requiresAuth: true,
+        requiresPermission: 'model'
+       }
     },
     {
       path: '/fine-tune/:id',
       name: 'FineTuneDetail',
       component: FineTuneDetailView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'model'
+       }
     },
     {
       path: '/local-model',
       name: 'LocalModel',
       component: LocalModelView,
-      meta: { requiresAuth: true }
-    },
+      meta: { requiresAuth: true,
+        requiresPermission: 'local-model' }
+      },
     {
       path: "/chatBase",
       name: 'ChatBase',
@@ -133,7 +155,8 @@ const router = createRouter({
       path: '/permission',
       name: 'Permission',
       component: PermissionManageView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true,
+        requiresPermission: 'permission' }
     },
   ],
   scrollBehavior(to, from, savedPosition) {
@@ -155,8 +178,16 @@ router.beforeEach(async (to, from, next) => {
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
     if (userStore.isAuthenticated && userStore.getToken()) {
-      // 已认证且有有效token
-      next()
+      // 检查权限
+      if (to.meta.requiresPermission) {
+        const hasPerm = await userStore.hasPermission(to.meta.requiresPermission);
+        if (!hasPerm) {
+          ElMessage.error('无权限访问！');
+          next(from.fullPath); // 返回原页面或跳转到无权限页面
+          return;
+        }
+      }
+      next();
     } else {
       // 未认证，重定向到登录页
       next({ 
@@ -165,15 +196,14 @@ router.beforeEach(async (to, from, next) => {
           redirect: to.fullPath,
           reason: 'unauthenticated'
         } 
-      })
+      });
     }
   } else if ((to.name === 'login' || to.name === 'register') && userStore.isAuthenticated) {
     // 已登录用户访问登录/注册页，重定向到首页
-    next({ name: 'home' })
+    next({ name: 'home' });
   } else {
     // 其他情况正常导航
-    next()
+    next();
   }
 })
-
 export default router

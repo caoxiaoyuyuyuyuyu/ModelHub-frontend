@@ -1,6 +1,8 @@
 // utils/api.ts
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
+import { ElMessage } from 'element-plus'
+
 
 // 创建 axios 实例
 const api = axios.create({
@@ -39,6 +41,10 @@ api.interceptors.response.use(response => {
     // path: '/login',
     // query: { reason: 'session_expired' }
     // })
+  }
+  if (error.response && error.response.status === 403) {
+    // 403 Forbidden - 提示权限不足
+    ElMessage.error('权限不足')
   }
   
   return Promise.reject(error)

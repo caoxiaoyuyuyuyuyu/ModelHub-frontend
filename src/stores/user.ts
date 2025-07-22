@@ -23,6 +23,17 @@ export const useUserStore = defineStore('user', () => {
   
   // 登录状态
   const isAuthenticated = ref(false)
+
+  async function hasPermission(permission: string) {
+    try {
+      const response = await api.post(`/permission/check`, { permission: permission})
+      console.log(response.data)
+      return response.data.success
+    } catch (error) {
+      console.error(error)
+      return false
+    }
+  }
   
   // 登录方法
   async function login(email: string, password: string) {
@@ -150,6 +161,7 @@ export const useUserStore = defineStore('user', () => {
     logout,
     init,
     getToken,
-    updateUserAvatar
+    updateUserAvatar,
+    hasPermission
   }
 })

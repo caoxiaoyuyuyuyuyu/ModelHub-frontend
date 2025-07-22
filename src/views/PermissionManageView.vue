@@ -1,31 +1,50 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ref, reactive, onMounted, watch } from 'vue';
+import { ElMessage } from 'element-plus';
 import type { FormInstance, FormRules } from 'element-plus';
 import api from '../utils/api';
 
-// 模拟用户数据
-const users = ref([
-  { id: 1, username: 'admin', role: 'admin', permissions: ['all'] },
-  { id: 2, username: 'editor', role: 'editor', permissions: ['config', 'database'] },
-  { id: 3, username: 'viewer', role: 'viewer', permissions: ['database'] }
-]);
+interface Role { 
+  id: number; 
+  name: string; 
+  description: string;
+  permissions: string[];
+}
+interface Route { 
+  id: number;
+  name: string; 
+  path: string; 
+  component: string;
+  meta: { 
+    icon: string;
+  };
+  roles: string[];
+}
+interface Permission {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+}
+interface HierarchicalRoute extends Route {
+  children?: HierarchicalRoute[];
+}
+
+
+// 所有角色选项
+const allRoles = ref<Role[]>([]);
 
 // 模拟路由权限数据
-const routes = ref([
-  { path: '/config', name: '模型配置管理', roles: ['admin', 'editor'] },
-  { path: '/database', name: '数据库管理', roles: ['admin', 'editor', 'viewer'] },
-  { path: '/model', name: '微调管理', roles: ['admin'] },
-  { path: '/local-model', name: '模型管理', roles: ['admin'] },
-  { path: '/permission', name: '权限管理', roles: ['admin'] }
-]);
+const routes = ref<HierarchicalRoute[]>([]);
+
+// 所有可用权限选项
+const allPermissions = ref<Permission[]>([]);
 
 // 当前选中的用户
-const selectedUser = ref<any>(null);
-const userFormRef = ref<FormInstance>();
-const userForm = reactive({
-  username: '',
-  role: '',
+const roleFormRef = ref<FormInstance>();
+const roleForm = reactive({
+  id: null as number | null,
+  name: '',
   permissions: [] as string[]
 });
 
@@ -40,34 +59,9 @@ const routeForm = reactive({
 
 // 表单验证规则
 const rules = reactive<FormRules>({
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
   path: [{ required: true, message: '请输入路由路径', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入路由名称', trigger: 'blur' }]
+  roles: [{ type: 'array', required: true, message: '请至少选择一个角色', trigger: 'change' }]
 });
-
-// 所有可用权限选项
-const allPermissions = ref([
-  { label: '模型配置管理', value: 'config' },
-  { label: '数据库管理', value: 'database' },
-  { label: '微调管理', value: 'model' },
-  { label: '模型管理', value: 'local-model' },
-  { label: '权限管理', value: 'permission' }
-]);
-
-// 所有角色选项
-const allRoles = ref(['admin', 'editor', 'viewer']);
-
-// 选择用户
-const selectUser = (user: any) => {
-  selectedUser.value = user;
-  Object.assign(userForm, {
-    username: user.username,
-    role: user.role,
-    permissions: [...user.permissions]
-  });
-  selectedRoute.value = null;
-};
 
 // 选择路由
 const selectRoute = (route: any) => {
@@ -77,56 +71,103 @@ const selectRoute = (route: any) => {
     name: route.name,
     roles: [...route.roles]
   });
-  selectedUser.value = null;
 };
+watch(() => roleForm.id, (newRoleId) => {
+  if (newRoleId) {
+    const selectedRole = allRoles.value.find(role => role.id === newRoleId);
+    if (selectedRole) {
+      roleForm.name = selectedRole.name;
+      roleForm.permissions = [...selectedRole.permissions];
+    }
+  } else {
+    roleForm.name = '';
+    roleForm.permissions = [];
+  }
+});
 
+const flattenRoutes = (routes: HierarchicalRoute[]): Route[] => {
+  return routes.reduce((acc: Route[], route) => {
+    acc.push({
+      id: route.id,
+      name: route.name,
+      path: route.path,
+      component: route.component,
+      meta: route.meta,
+      roles: route.roles
+    });
+    if (route.children) {
+      acc.push(...flattenRoutes(route.children));
+    }
+    return acc;
+  }, []);
+};
 // 保存用户权限
-const saveUserPermissions = async (formEl: FormInstance | undefined) => {
-  if (!formEl) return;
+const saveRolePermissions = async () => {
+  if (!roleForm.id) {
+    ElMessage.warning('请选择角色');
+    return;
+  }
   
-  await formEl.validate((valid) => {
-    if (valid) {
-      const user = users.value.find(u => u.id === selectedUser.value.id);
-      if (user) {
-        user.role = userForm.role;
-        user.permissions = userForm.permissions;
-        ElMessage.success('用户权限更新成功');
-      }
-    }
-  });
+  try {
+    await api.put(`/permission/roles/${roleForm.id}`, {
+      permissions: roleForm.permissions
+    });
+    ElMessage.success('角色权限更新成功');
+  } catch (error) {
+    ElMessage.error('角色权限更新失败');
+  }
 };
-
 // 保存路由权限
-const saveRoutePermissions = async (formEl: FormInstance | undefined) => {
-  if (!formEl) return;
+const saveRoutePermissions = async () => {
+  if (!selectedRoute.value) {
+    ElMessage.warning('请选择路由');
+    return;
+  }
   
-  await formEl.validate((valid) => {
-    if (valid) {
-      const route = routes.value.find(r => r.path === selectedRoute.value.path);
-      if (route) {
-        route.roles = routeForm.roles;
-        ElMessage.success('路由权限更新成功');
-      }
+  try {
+    await api.put(`/permission/routes/${selectedRoute.value.id}`, {
+      roles: routeForm.roles
+    });
+    ElMessage.success('路由权限更新成功');
+    
+    // Update the local state to reflect changes
+    const route = routes.value.find(r => r.id === selectedRoute.value.id);
+    if (route) {
+      route.roles = [...routeForm.roles];
     }
-  });
+  } catch (error) {
+    ElMessage.error('路由权限更新失败');
+  }
 };
 
 // 重置表单
 const resetForm = () => {
-  if (selectedUser.value) {
-    selectUser(selectedUser.value);
-  } else if (selectedRoute.value) {
-    selectRoute(selectedRoute.value);
-  }
+  roleForm.id = null;
+  roleForm.name = '';
+  roleForm.permissions = [];
+  routeForm.path = '';
+  routeForm.name = '';
+  routeForm.roles = [];
+  selectedRoute.value = null;
 };
 
-onMounted(() => { 
-    api.get('/user/test').then(res => { 
-        console.log(res)
-        ElMessage.success('测试成功')
-    }).catch(err => { 
-        ElMessage.error('测试失败')
-    })
+const loading = ref(false);
+
+onMounted(() => {
+  loading.value = true;
+  Promise.all([
+    api.get('/permission/roles'),
+    api.get('/permission/routes'),
+    api.get('/permission')
+  ]).then(([rolesRes, routesRes, permRes]) => {
+    allRoles.value = rolesRes.data;
+    routes.value = routesRes.data.data;
+    allPermissions.value = permRes.data;
+  }).catch(err => {
+    ElMessage.error('加载数据失败');
+  }).finally(() => {
+    loading.value = false;
+  });
 });
 </script>
 
@@ -135,61 +176,46 @@ onMounted(() => {
     <div class="content-section">
       <h2>权限管理</h2>
       <p class="subtitle">管理系统用户和路由的访问权限</p>
-      
-      <div class="permission-container">
-        <!-- 用户权限管理 -->
+      <el-skeleton :rows="5" animated v-if="loading" />
+
+      <div v-else class="permission-container">
+        <!-- 角色权限管理 -->
         <div class="permission-section">
-          <h3>用户权限管理</h3>
-          <div class="selection-list">
-            <div 
-              v-for="user in users" 
-              :key="user.id" 
-              class="selection-item" 
-              :class="{ active: selectedUser?.id === user.id }"
-              @click="selectUser(user)"
-            >
-              <span>{{ user.username }}</span>
-              <span class="role-tag">{{ user.role }}</span>
-            </div>
-          </div>
+          <h3>角色权限管理</h3>
           
           <el-form 
-            v-if="selectedUser" 
-            ref="userFormRef" 
-            :model="userForm" 
+            ref="roleFormRef" 
+            :model="roleForm" 
             :rules="rules" 
             label-width="100px"
             class="permission-form"
           >
-            <el-form-item label="用户名" prop="username">
-              <el-input v-model="userForm.username" disabled />
-            </el-form-item>
             
-            <el-form-item label="角色" prop="role">
-              <el-select v-model="userForm.role" placeholder="请选择角色">
-                <el-option 
-                  v-for="role in allRoles" 
-                  :key="role" 
-                  :label="role" 
-                  :value="role"
-                />
-              </el-select>
+            <el-form-item label="角色" prop="name">
+              <el-select v-model="roleForm.id" placeholder="请选择角色">
+              <el-option 
+                v-for="role in allRoles" 
+                :key="role.id" 
+                :label="role.name" 
+                :value="role.id"
+              />
+            </el-select>
             </el-form-item>
             
             <el-form-item label="权限">
-              <el-checkbox-group v-model="userForm.permissions">
+              <el-checkbox-group v-model="roleForm.permissions">
                 <el-checkbox 
                   v-for="perm in allPermissions" 
-                  :key="perm.value" 
-                  :label="perm.value"
+                  :key="perm.id" 
+                  :label="perm.code"
                 >
-                  {{ perm.label }}
+                  {{ perm.description }}
                 </el-checkbox>
               </el-checkbox-group>
             </el-form-item>
             
             <el-form-item>
-              <el-button type="primary" @click="saveUserPermissions(userFormRef)">
+              <el-button type="primary" @click="saveRolePermissions">
                 保存
               </el-button>
               <el-button @click="resetForm">重置</el-button>
@@ -200,61 +226,172 @@ onMounted(() => {
         <!-- 路由权限管理 -->
         <div class="permission-section">
           <h3>路由权限管理</h3>
-          <div class="selection-list">
-            <div 
-              v-for="route in routes" 
-              :key="route.path" 
-              class="selection-item" 
-              :class="{ active: selectedRoute?.path === route.path }"
-              @click="selectRoute(route)"
-            >
-              <span>{{ route.name }}</span>
-              <span class="path-tag">{{ route.path }}</span>
+          
+          <div class="route-management-container">
+            <!-- Route Tree Navigation -->
+            <div class="route-tree">
+              <el-tree
+                :data="routes"
+                node-key="path"
+                :props="{
+                  children: 'children',
+                  label: 'name'
+                }"
+                :expand-on-click-node="false"
+                @node-click="selectRoute"
+                :highlight-current="true"
+              >
+                <template #default="{ node, data }">
+                  <span class="route-tree-node">
+                    <span>{{ node.label }}</span>
+                    <span class="path-tag">{{ data.path }}</span>
+                    <span class="method-tag">{{ data.method || 'GET' }}</span>
+                  </span>
+                </template>
+              </el-tree>
+            </div>
+            
+            <!-- Route Details Form -->
+            <div class="route-form-container">
+              <el-form 
+                v-if="selectedRoute" 
+                ref="routeFormRef" 
+                :model="routeForm" 
+                :rules="rules" 
+                label-width="120px"
+                class="permission-form"
+              >
+                <el-form-item label="路由路径" prop="path">
+                  <el-input v-model="routeForm.path" disabled />
+                </el-form-item>
+                
+                <el-form-item label="HTTP方法" prop="method">
+                  <el-select v-model="selectedRoute.method" disabled>
+                    <el-option label="GET" value="GET" />
+                    <el-option label="POST" value="POST" />
+                    <el-option label="PUT" value="PUT" />
+                    <el-option label="DELETE" value="DELETE" />
+                  </el-select>
+                </el-form-item>
+                
+                <el-form-item label="路由名称" prop="name">
+                  <el-input v-model="routeForm.name" />
+                </el-form-item>
+                
+                <!-- <el-form-item label="图标" prop="icon">
+                  <el-input v-model="routeForm.meta.icon" placeholder="输入Element Plus图标类名" />
+                </el-form-item> -->
+                
+                <el-form-item label="允许角色" prop="roles">
+                  <el-checkbox-group v-model="routeForm.roles" class="role-checkboxes">
+                    <el-checkbox 
+                      v-for="role in allRoles" 
+                      :key="role.id" 
+                      :label="role.name"
+                      class="role-checkbox"
+                    >
+                      {{ role.name }}
+                    </el-checkbox>
+                  </el-checkbox-group>
+                </el-form-item>
+                
+                <el-form-item>
+                  <el-button type="primary" @click="saveRoutePermissions">
+                    保存
+                  </el-button>
+                  <el-button @click="resetForm">重置</el-button>
+                </el-form-item>
+              </el-form>
+              
+              <div v-else class="empty-selection">
+                <el-empty description="请从左侧选择路由进行权限配置" />
+              </div>
             </div>
           </div>
-          
-          <el-form 
-            v-if="selectedRoute" 
-            ref="routeFormRef" 
-            :model="routeForm" 
-            :rules="rules" 
-            label-width="100px"
-            class="permission-form"
-          >
-            <el-form-item label="路由路径" prop="path">
-              <el-input v-model="routeForm.path" disabled />
-            </el-form-item>
-            
-            <el-form-item label="路由名称" prop="name">
-              <el-input v-model="routeForm.name" />
-            </el-form-item>
-            
-            <el-form-item label="允许角色">
-              <el-checkbox-group v-model="routeForm.roles">
-                <el-checkbox 
-                  v-for="role in allRoles" 
-                  :key="role" 
-                  :label="role"
-                >
-                  {{ role }}
-                </el-checkbox>
-              </el-checkbox-group>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="saveRoutePermissions(routeFormRef)">
-                保存
-              </el-button>
-              <el-button @click="resetForm">重置</el-button>
-            </el-form-item>
-          </el-form>
         </div>
       </div>
     </div>
   </div>
 </template>
-
 <style scoped>
+.permission-container {
+  display: flex;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.permission-section {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+}
+
+.route-management-container {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.route-tree {
+  flex: 0 0 300px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 10px;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.route-form-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.route-tree-node {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.path-tag {
+  margin-left: 10px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  color: #666;
+}
+
+.method-tag {
+  margin-left: 10px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #ecf5ff;
+  color: #409eff;
+  font-weight: bold;
+}
+
+.role-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.role-checkbox {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+.empty-selection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  border: 1px dashed #dcdfe6;
+  border-radius: 4px;
+}
 .permission-container {
   display: flex;
   gap: 30px;

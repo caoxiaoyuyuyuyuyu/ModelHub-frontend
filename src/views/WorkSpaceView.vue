@@ -36,14 +36,14 @@ const workspaces = ref([
     bgColor: 'linear-gradient(135deg, rgb(186 146 230) 0%, rgb(37, 117, 252) 100%)', // 不同背景
     route: '/local-model'
   },
-  {
-    id: 5,
-    title: '权限管理',
-    description: '管理用户和功能权限',
-    icon: Key,
-    bgColor: 'linear-gradient(135deg, rgb(236 247 236) 0%, rgb(38 203 31) 100%)', // 修改为深蓝色渐变
-    route: '/permission'
-  }
+  // {
+  //   id: 5,
+  //   title: '权限管理',
+  //   description: '管理用户和功能权限',
+  //   icon: Key,
+  //   bgColor: 'linear-gradient(135deg, rgb(236 247 236) 0%, rgb(38 203 31) 100%)', // 修改为深蓝色渐变
+  //   route: '/permission'
+  // }
 ]);
 
 </script>

@@ -82,7 +82,7 @@ const goToLogin = () => {
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-header">
-        <ElAvatar :size="64" src="/public/vite.svg" />
+        <ElAvatar :size="64" src="/public/ModelHub.png" />
         <h2>创建账号</h2>
         <p>加入我们的平台</p>
       </div>

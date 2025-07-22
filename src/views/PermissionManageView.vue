@@ -180,7 +180,7 @@ onMounted(() => {
 
       <div v-else class="permission-container">
         <!-- 角色权限管理 -->
-        <div class="permission-section">
+        <div class="permission-section" style="flex: 0.3;">
           <h3>角色权限管理</h3>
           
           <el-form 
@@ -203,8 +203,8 @@ onMounted(() => {
             </el-form-item>
             
             <el-form-item label="权限">
-              <el-checkbox-group v-model="roleForm.permissions">
-                <el-checkbox 
+              <el-checkbox-group class="permission-checkbox" v-model="roleForm.permissions">
+                <el-checkbox
                   v-for="perm in allPermissions" 
                   :key="perm.id" 
                   :label="perm.code"
@@ -335,7 +335,7 @@ onMounted(() => {
 }
 
 .route-tree {
-  flex: 0 0 300px;
+  /* flex: 0 0 300px; */
   border: 1px solid #ebeef5;
   border-radius: 4px;
   padding: 10px;
@@ -453,5 +453,10 @@ onMounted(() => {
 
 .permission-form {
   margin-top: 20px;
+}
+
+.permission-checkbox { 
+  display: flex;
+  flex-direction: column;
 }
 </style>

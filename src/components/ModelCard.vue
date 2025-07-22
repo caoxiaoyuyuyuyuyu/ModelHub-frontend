@@ -29,7 +29,7 @@ const handleExperience = () => {
   <div class="model-card" :class="{ 'featured-card': isFeatured }">
     <div class="card-header">
       <div class="model-info">
-        <ElAvatar :size="32" :src="'/public/vite.svg'"></ElAvatar>
+        <ElAvatar :size="32" :src="'/public/ModelHub.png'"></ElAvatar>
         <h3>{{ name }}</h3>
       </div>
       <!-- <ElTag size="large">{{ isFeatured ? '推荐' : '最新' }}</ElTag> -->
@@ -47,8 +47,8 @@ const handleExperience = () => {
         <span class="date">{{ update_at }}</span>
       </div>
       <div class="actions">
-        <ElButton size="large" type="text">查看详情</ElButton>
-        <ElButton size="large" type="text">API参考</ElButton>
+        <!-- <ElButton size="large" type="text">查看详情</ElButton> -->
+        <!-- <ElButton size="large" type="text">API参考</ElButton> -->
         <ElButton size="large" type="primary" @click="handleExperience()">立即体验</ElButton>
       </div>
     </div>
@@ -150,11 +150,11 @@ const handleExperience = () => {
 }
 
 .actions {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: space-around;
+    display: flex;
+    width: 100%;
+    align-items: flex-end;
+    gap: 0.5rem;
+    justify-content: flex-end;
 }
 
 .actions .el-button {

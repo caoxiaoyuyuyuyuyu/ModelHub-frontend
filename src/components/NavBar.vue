@@ -22,7 +22,7 @@ const changeTheme = (themeId: string) => {
   <nav class="navbar">
     <div class="navbar-brand">
       <RouterLink to="/" class="logo-link">
-        <ElAvatar :size="42" src="/public/vite.svg"></ElAvatar>
+        <ElAvatar :size="42" src="/public/ModelHub.png"></ElAvatar>
       </RouterLink>
       <h2>ModelHub</h2>
     </div>

@@ -162,7 +162,7 @@ const handleSupplierChange = async () => {
           </ElRadioGroup>
         </div>
         
-        <div class="filter-group">
+        <!-- <div class="filter-group">
           <span class="filter-label">热度</span>
           <ElRadioGroup v-model="selectedPopularity" class="filter-options">
             <ElRadioButton 
@@ -173,7 +173,7 @@ const handleSupplierChange = async () => {
               class="filter-button"
             />
           </ElRadioGroup>
-        </div>
+        </div> -->
       </div>
       
       <!-- 模型网格 -->

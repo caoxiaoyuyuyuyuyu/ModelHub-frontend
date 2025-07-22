@@ -11,7 +11,8 @@ const menuItems = [
   { id: 'dashboard', name: '首页', icon: '🏠', path: '/' },
   { id: 'workspace', name: '工作台', icon: '💼', path: '/workspace' },
   { id: 'history', name: '对话历史', icon: '🕒', path: '/history' },
-  { id: 'user', name: '个人中心', icon: '👤', path: '/user' }
+  { id: 'user', name: '个人中心', icon: '👤', path: '/user' },
+  { id: 'permission', name: '权限管理', icon: '⚙️', path: '/permission' },
 ]
 </script>
 

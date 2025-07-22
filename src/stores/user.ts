@@ -46,7 +46,7 @@ export const useUserStore = defineStore('user', () => {
           id: data.id,
           name: data.name,
           email: data.email,
-          avatar: ("http://localhost:5000/user/avatar/" + data.avatar) || '/public/vite.svg',
+          avatar: ("http://localhost:5000/user/avatar/" + data.avatar) || '/public/ModelHub.png',
       }
       token.value = data.token
       isAuthenticated.value = true
@@ -148,7 +148,7 @@ export const useUserStore = defineStore('user', () => {
 
   function updateUserAvatar(avatar: string) {
     if (user.value) {
-      user.value.avatar = ("http://localhost:5000/user/avatar/" + avatar) || '/public/vite.svg';
+      user.value.avatar = ("http://localhost:5000/user/avatar/" + avatar) || '/public/ModelHub.png';
     }
   }
   

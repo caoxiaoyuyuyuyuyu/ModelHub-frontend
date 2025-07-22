@@ -172,7 +172,7 @@ const scrollToBottom = () => {
           :class="{ 'user-message': message.role=='user', 'ai-message': message.role=='assistant' }"
         >
           <div class="message-avatar">
-            <img :src="'/public/vite.svg'" :alt="'头像'">
+            <img :src="'/public/ModelHub.png'" :alt="'头像'">
           </div>
           <div class="message-content">
           <!-- {{ message }} -->

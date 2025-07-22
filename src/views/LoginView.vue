@@ -50,7 +50,7 @@ const goToRegister = () => {
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-header">
-        <ElAvatar :size="64" src="/public/vite.svg" />
+        <ElAvatar :size="64" src="/public/ModelHub.png" />
         <h2>欢迎回来</h2>
         <p>请登录您的账号</p>
       </div>

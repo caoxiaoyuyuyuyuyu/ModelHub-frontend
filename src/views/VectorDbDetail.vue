@@ -262,6 +262,10 @@ const form = ref({
   describe: '',
   embedding_id: vectorDb.value.embedding_id,
   document_similarity: 0.5,
+  distance: 'cosine',
+  chunk_size: 1024,
+  chunk_overlap: 200,
+  topk: 10,
 });
 const formRules = {
   name: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
@@ -272,7 +276,11 @@ const initForm = () => {
     name: vectorDb.value.name,
     describe: vectorDb.value.describe,
     embedding_id: vectorDb.value.embedding_id,
-    document_similarity: Number(vectorDb.value.document_similarity),
+    document_similarity: Number(vectorDb.value.document_similarity) || 0.5,
+    distance: vectorDb.value.distance || 'cosine',
+    chunk_size: vectorDb.value.chunk_size || 1024,
+    chunk_overlap: vectorDb.value.chunk_overlap || 200,
+    topk: vectorDb.value.topk || 10,
   };
 }
 // 提交表单
@@ -401,7 +409,7 @@ onMounted(async() => {
             </ElOption>
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="相似度">
+        <ElFormItem label="相似度阈值">
           <ElSlider
             v-model="form.document_similarity"
             :min="0"
@@ -409,6 +417,51 @@ onMounted(async() => {
             :step="0.1"
             show-input
           />
+        </ElFormItem>
+        
+        <ElFormItem label="距离度量方式">
+          <ElSelect
+            v-model="form.distance"
+            placeholder="请选择距离度量方式"
+            style="width: 100%"
+          >
+            <ElOption label="余弦相似度 (cosine)" value="cosine" />
+            <ElOption label="L2距离 (l2)" value="l2" />
+            <ElOption label="内积 (ip)" value="ip" />
+          </ElSelect>
+        </ElFormItem>
+        
+        <ElFormItem label="Chunk大小">
+          <ElInputNumber
+            v-model="form.chunk_size"
+            :min="100"
+            :max="10000"
+            :step="100"
+            style="width: 100%"
+          />
+          <template #append>字符</template>
+        </ElFormItem>
+        
+        <ElFormItem label="Chunk重叠">
+          <ElInputNumber
+            v-model="form.chunk_overlap"
+            :min="0"
+            :max="1000"
+            :step="50"
+            style="width: 100%"
+          />
+          <template #append>字符</template>
+        </ElFormItem>
+        
+        <ElFormItem label="Top K">
+          <ElInputNumber
+            v-model="form.topk"
+            :min="1"
+            :max="100"
+            :step="1"
+            style="width: 100%"
+          />
+          <template #append>条结果</template>
         </ElFormItem>
       </ElForm>
       
@@ -470,8 +523,24 @@ onMounted(async() => {
               <span class="meta-value">{{ vectorDb.id }}</span>
             </div> -->
             <div class="meta-item"> 
-              <span class="meta-label">相似度</span>
-              <span class="meta-value">{{ form.document_similarity }}</span>
+              <span class="meta-label">相似度阈值</span>
+              <span class="meta-value">{{ vectorDb.document_similarity || 0.7 }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">距离度量</span>
+              <span class="meta-value">{{ vectorDb.distance || 'cosine' }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Chunk大小</span>
+              <span class="meta-value">{{ vectorDb.chunk_size || 1024 }} 字符</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Chunk重叠</span>
+              <span class="meta-value">{{ vectorDb.chunk_overlap || 200 }} 字符</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Top K</span>
+              <span class="meta-value">{{ vectorDb.topk || 10 }} 条</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">关联模型</span>

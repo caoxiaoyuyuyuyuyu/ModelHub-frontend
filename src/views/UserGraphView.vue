@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { ElNotification } from 'element-plus'
+import { ElNotification, ElDialog, ElSelect, ElOption, ElMessage } from 'element-plus'
 import { getUserInfo, uploadAvatar } from '../api/user'
 import { getModelInfos } from '../api/model'
 import { ModelConfig, ModelInfo } from '../types/model_config';
 import { document } from '../types/document'
 import { useRouter } from 'vue-router';
+import api from '../utils/api';
 
 import { useUserStore } from '../stores/user';
 // 引入echarts
@@ -45,6 +46,11 @@ const vectorDBs = ref<VectorDb[]>([])
 const modelInfos = ref<ModelInfo[]>([])
 const activeTab = ref('connections')
 
+const showRoleDialog = ref(false)
+const roles = ref<any[]>([])
+const selectedRole = ref('')
+const isSubmitting = ref(false)
+
 // 计算属性
 const baseModelMap = computed(() => {
   const map = new Map<number, string>()
@@ -53,6 +59,43 @@ const baseModelMap = computed(() => {
   })
   return map
 })
+
+const getRoles = async () => { 
+  const responseData = api.get('/permission/roles')
+  return (await responseData).data
+}
+const openRoleDialog = async () => {
+  try {
+    const res = await getRoles() // API call to get available roles
+    roles.value = res
+    selectedRole.value = userInfo.value?.type || ''
+    showRoleDialog.value = true
+  } catch (error) {
+    ElNotification({
+      title: '错误',
+      message: '获取角色列表失败',
+      type: 'error'
+    })
+  }
+}
+const submitRoleChange = async () => {
+  if (!selectedRole.value || !userInfo.value) return
+  
+  isSubmitting.value = true
+  try {
+    // await updateUserRole(userInfo.value.id, selectedRole.value) // API call to update role
+    ElMessage.success('角色变更请求已提交，请耐心等待审核')
+    showRoleDialog.value = false
+  } catch (error) {
+    ElNotification({
+      title: '错误',
+      message: '提交角色变更失败',
+      type: 'error'
+    })
+  } finally {
+    isSubmitting.value = false
+  }
+}
 
 // 获取向量数据库名称
 const getVectorDBName = (id: number | null) => {
@@ -492,14 +535,42 @@ const changeAvatar = () => {
             <h2>{{ userInfo?.name || '未命名用户' }}</h2>
             <p class="email">{{ userInfo?.email || '未设置邮箱' }}</p>
             <div class="user-meta">
-              <span class="badge">{{ userInfo?.type || '未知类型' }}</span>
+              <span class="badge" @click="openRoleDialog">{{ userInfo?.type || '未知类型' }}</span>
               <span class="join-date">加入时间: {{ userInfo?.create_at ? formatDate(userInfo.create_at) : '未知' }}</span>
             </div>
             <p class="description">{{ userInfo?.describe?userInfo?.describe:'该用户暂无描述信息' }}</p>
           </div>
         </div>
       </div>
-      
+      <el-dialog
+        v-model="showRoleDialog"
+        title="更改用户类型"
+        width="30%"
+      >
+        <div style="margin-bottom: 20px;">
+          <p>当前用户类型: {{ userInfo?.type || '未知类型' }}</p>
+          <el-select v-model="selectedRole" placeholder="请选择新的用户类型" style="width: 100%">
+            <el-option
+              v-for="role in roles"
+              :key="role.id"
+              :label="role.name"
+              :value="role.name"
+            />
+          </el-select>
+        </div>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="showRoleDialog = false">取消</el-button>
+            <el-button 
+              type="primary" 
+              @click="submitRoleChange"
+              :loading="isSubmitting"
+            >
+              提交
+            </el-button>
+          </span>
+        </template>
+      </el-dialog>
       <!-- 标签页区域 -->
       <div class="tabs-container">
         <div class="tabs">
@@ -1061,5 +1132,18 @@ flex-direction: column;
     stroke-dashoffset: 0;
   }
 }
+.badge {
+  background: #3498db;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer; /* Add this */
+  transition: background 0.2s; /* Add this */
+}
 
+.badge:hover {
+  background: #2980b9; /* Add this */
+}
 </style>

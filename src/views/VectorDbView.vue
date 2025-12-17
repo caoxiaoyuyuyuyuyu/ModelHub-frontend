@@ -25,6 +25,11 @@ const form = ref({
   describe: '',
   embedding_id: null,
   document_similarity: 0.5,
+  distance: 'cosine',
+  metadata: null,
+  chunk_size: 1024,
+  chunk_overlap: 200,
+  topk: 10,
 });
 const formRules = {
   name: [{ required: true, message: '请输入数据库名称', trigger: 'blur' }],
@@ -61,6 +66,11 @@ const initForm = () => {
     describe: '',
     embedding_id: null,
     document_similarity: 0.5,
+    distance: 'cosine',
+    metadata: null,
+    chunk_size: 1024,
+    chunk_overlap: 200,
+    topk: 10,
   };
 };
 // 提交表单
@@ -195,7 +205,7 @@ onMounted(async () => {
             </ElOption>
           </ElSelect>
         </ElFormItem>
-        <ElFormItem label="相似度">
+        <ElFormItem label="相似度阈值">
           <ElSlider
             v-model="form.document_similarity"
             :min="0"
@@ -203,6 +213,51 @@ onMounted(async () => {
             :step="0.1"
             show-input
           />
+        </ElFormItem>
+        
+        <ElFormItem label="距离度量方式">
+          <ElSelect
+            v-model="form.distance"
+            placeholder="请选择距离度量方式"
+            style="width: 100%"
+          >
+            <ElOption label="余弦相似度 (cosine)" value="cosine" />
+            <ElOption label="L2距离 (l2)" value="l2" />
+            <ElOption label="内积 (ip)" value="ip" />
+          </ElSelect>
+        </ElFormItem>
+        
+        <ElFormItem label="Chunk大小">
+          <ElInputNumber
+            v-model="form.chunk_size"
+            :min="100"
+            :max="10000"
+            :step="100"
+            style="width: 100%"
+          />
+          <template #append>字符</template>
+        </ElFormItem>
+        
+        <ElFormItem label="Chunk重叠">
+          <ElInputNumber
+            v-model="form.chunk_overlap"
+            :min="0"
+            :max="1000"
+            :step="50"
+            style="width: 100%"
+          />
+          <template #append>字符</template>
+        </ElFormItem>
+        
+        <ElFormItem label="Top K">
+          <ElInputNumber
+            v-model="form.topk"
+            :min="1"
+            :max="100"
+            :step="1"
+            style="width: 100%"
+          />
+          <template #append>条结果</template>
         </ElFormItem>
       </ElForm>
       

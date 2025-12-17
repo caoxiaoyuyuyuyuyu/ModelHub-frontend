@@ -16,6 +16,11 @@ export interface VectorDbForm {
   describe: string
   embedding_id: number
   document_similarity: number
+  distance?: string
+  metadata?: Record<string, any>
+  chunk_size?: number
+  chunk_overlap?: number
+  topk?: number
   created_at: string
   updated_at: string
   model_configs: ModelConfig[]

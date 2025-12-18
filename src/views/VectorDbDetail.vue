@@ -58,9 +58,7 @@ const uploadRules = {
       trigger: 'change' 
     }
   ],
-  describe: [
-    { required: true, message: '请输入文件描述', trigger: 'blur' }
-  ]
+    describe: []  // 描述字段可选
 };
 
 // 获取数据库详情

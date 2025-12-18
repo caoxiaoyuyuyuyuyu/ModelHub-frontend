@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import { Connection, Delete, Edit, Back, Upload } from '@element-plus/icons-vue';
+import { Connection, Delete, Edit, Back, Upload, Refresh } from '@element-plus/icons-vue';
 import type { VectorDbForm } from '../types/vectorDb';
-import { getVectorDb, updateVectorDb, uploadDocument, deleteDocument, deleteVectorDb, DownloadFile } from '../api/vectorDb';
+import { getVectorDb, updateVectorDb, uploadDocument, deleteDocument, deleteVectorDb, DownloadFile, getDocuments } from '../api/vectorDb';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { deleteModelConfig } from '../api/model';
 import { useRouter } from 'vue-router';
@@ -33,6 +33,12 @@ const vectorDb = ref<VectorDbForm>({
   model_configs: [],
   documents: []
 });
+
+// 文档分页相关
+const documentsPage = ref(1);
+const documentsPageSize = ref(20);
+const documentsTotal = ref(0);
+const documentsLoading = ref(false);
 
 // 上传文件相关
 const uploadDialogVisible = ref(false);
@@ -66,11 +72,50 @@ const fetchVectorDbDetail = async () => {
   loading.value = true;
   try {
     vectorDb.value = await getVectorDb(vectorDbId.value);
+    // 获取文档总数（用于显示）
+    documentsTotal.value = vectorDb.value.documents?.length || 0;
     loading.value = false;
+    // 加载第一页文档
+    await fetchDocuments(1);
   } catch (error) {
     console.error('获取数据库详情失败:', error);
     loading.value = false;
   }
+};
+
+// 获取文档列表（分页）
+const fetchDocuments = async (page: number = documentsPage.value) => {
+  documentsLoading.value = true;
+  try {
+    const result = await getDocuments(vectorDbId.value, page, documentsPageSize.value);
+    if (result && result.documents) {
+      vectorDb.value.documents = result.documents;
+      if (result.pagination) {
+        documentsPage.value = result.pagination.page;
+        documentsTotal.value = result.pagination.total;
+      }
+    }
+  } catch (error) {
+    console.error('获取文档列表失败:', error);
+    ElMessage.error('获取文档列表失败');
+  } finally {
+    documentsLoading.value = false;
+  }
+};
+
+// 处理分页变化
+const handleDocumentsPageChange = (page: number) => {
+  documentsPage.value = page;
+  fetchDocuments(page);
+};
+
+// 刷新文档列表
+const handleRefreshDocuments = async () => {
+  await fetchDocuments(documentsPage.value);
+  // 更新总数
+  const detail = await getVectorDb(vectorDbId.value);
+  documentsTotal.value = detail.documents?.length || 0;
+  ElMessage.success('文档列表已刷新');
 };
 
 const handleDeleteModelConfig = async (modelConfigId: number) => { 
@@ -123,7 +168,11 @@ const submitUpload = async () => {
     
     await uploadDocument(formData);
     
-    fetchVectorDbDetail();
+    // 刷新文档列表
+    await fetchDocuments(documentsPage.value);
+    // 更新总数
+    const detail = await getVectorDb(vectorDbId.value);
+    documentsTotal.value = detail.documents?.length || 0;
     
     ElMessage.success(`成功上传 ${uploadForm.value.files.length} 个文档`);
     // ElMessage.success('文档上传成功');
@@ -159,10 +208,10 @@ const handleDeleteDocument = async (docId: number) => {
     
     await deleteDocument(docId);
     
-    // 更新本地文档列表
-    vectorDb.value.documents = vectorDb.value.documents.filter(
-      doc => doc.id !== docId
-    );
+    // 刷新当前页文档列表
+    await fetchDocuments(documentsPage.value);
+    // 更新总数
+    documentsTotal.value = Math.max(0, documentsTotal.value - 1);
     
     ElMessage.success('文档删除成功');
   } catch (error) {
@@ -602,6 +651,15 @@ onMounted(async() => {
               >
                 上传文档
               </el-button>
+              <el-button 
+                size="large"
+                :icon="Refresh"
+                @click="handleRefreshDocuments"
+                :loading="documentsLoading"
+                style="margin-left: 10px;"
+              >
+                刷新
+              </el-button>
             </div>
 
               <!-- 上传文档对话框 -->
@@ -666,7 +724,12 @@ onMounted(async() => {
                 </template>
               </el-dialog>
             
-            <el-table :data="vectorDb.documents" style="width: 100%" border>
+            <el-table 
+              :data="vectorDb.documents" 
+              style="width: 100%" 
+              border
+              v-loading="documentsLoading"
+            >
               <el-table-column prop="original_name" label="文档名称" width="220" />
               <el-table-column prop="type" label="类型" width="100">
                 <template #default="{ row }">
@@ -693,6 +756,18 @@ onMounted(async() => {
                 </template>
               </el-table-column>
             </el-table>
+            
+            <!-- 分页组件 -->
+            <el-pagination
+              v-model:current-page="documentsPage"
+              v-model:page-size="documentsPageSize"
+              :total="documentsTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @current-change="handleDocumentsPageChange"
+              @size-change="(size) => { documentsPageSize = size; fetchDocuments(1); }"
+              style="margin-top: 20px; justify-content: flex-end;"
+            />
           </div>
         </el-tab-pane>
         

@@ -55,3 +55,23 @@ export const queryVector = async (id: number, query_text: string, n_results: num
     })
     return response.data.data
 }
+
+export const getDocuments = async (vectorDbId: number, page: number = 1, pageSize: number = 20) => {
+    const response = await api.get(`/vector/documents/${vectorDbId}`, {
+        params: {
+            page: page,
+            page_size: pageSize
+        }
+    })
+    return response.data.data
+}
+
+export const getDocuments = async (vectorDbId: number, page: number = 1, pageSize: number = 20) => {
+    const response = await api.get(`/vector/documents/${vectorDbId}`, {
+        params: {
+            page: page,
+            page_size: pageSize
+        }
+    })
+    return response.data.data
+}
